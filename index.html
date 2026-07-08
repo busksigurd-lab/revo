@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Мафия — Подготовка</title>
+  <link rel="stylesheet" href="css/main.css" />
+</head>
+<body>
+
+  <header class="app-header">
+    <button class="burger" id="burgerBtn">☰</button>
+    <span class="header-title">🃏 Мафия — Подготовка</span>
+  </header>
+
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <span class="app-title">🃏 Мафия</span>
+      <button class="sidebar-close" id="sidebarClose">✕</button>
+    </div>
+    <ul class="nav-list">
+      <li><a href="index.html" class="nav-link active">👥 Игроки</a></li>
+      <li><a href="game.html"  class="nav-link">🎮 Игра</a></li>
+      <li><a href="stats.html" class="nav-link">📊 Статистика</a></li>
+    </ul>
+    <div class="sidebar-footer">
+      <span class="text-muted" style="font-size:12px;">v1.0.0</span>
+    </div>
+  </nav>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <main class="main-content">
+
+    <!-- Блок 1: Заголовок вечера -->
+    <div class="card">
+      <div class="card-title">📅 Вечер</div>
+      <div class="evening-header">
+        <input
+          type="text"
+          id="eveningTitle"
+          placeholder="Название игры / турнира"
+          class="evening-title-input"
+        />
+        <span class="evening-date" id="eveningDate"></span>
+      </div>
+    </div>
+
+    <!-- Блок 2: Список игроков -->
+    <div class="card">
+      <div class="players-header">
+        <span class="card-title" style="margin-bottom:0">👥 Игроки</span>
+        <span class="player-count" id="playerCount">0 игроков</span>
+      </div>
+
+      <div class="player-toolbar">
+        <button class="btn btn-secondary btn-sm" id="btnPasteClipboard">
+          📋 Вставить из буфера
+        </button>
+        <button class="btn btn-secondary btn-sm" id="btnClearAll">
+          🗑 Очистить
+        </button>
+      </div>
+
+      <div class="player-list" id="playerList"></div>
+      
+    </div>
+
+    <!-- Блок 3: Рассадки -->
+    <div class="card">
+      <div class="card-title">🔀 Рассадки</div>
+      <div class="seating-controls">
+        <label class="seating-label">Количество игр вечера:</label>
+        <div class="counter-row">
+          <button class="btn-counter" id="btnCountMinus">−</button>
+          <span class="counter-value" id="gameCount">4</span>
+          <button class="btn-counter" id="btnCountPlus">+</button>
+        </div>
+        <button class="btn btn-primary btn-sm" id="btnGenerate">
+          ⚡ Сгенерировать рассадки
+        </button>
+      </div>
+
+      <div class="tabs-wrapper" id="tabsWrapper" hidden>
+        <div class="tabs-nav" id="tabsNav"></div>
+        <div class="tabs-body" id="tabsBody"></div>
+        <button class="btn btn-secondary btn-sm" id="btnSaveFile" style="margin-top:12px">
+          💾 Сохранить в файл
+        </button>
+      </div>
+    </div>
+
+    <!-- Блок 4: Старт -->
+    <div class="card">
+      <div class="card-title">🚀 Начало вечера</div>
+      <div class="start-actions">
+        <button class="btn btn-secondary btn-large" id="btnSaveEvening">
+          💾 Сохранить вечер
+        </button>
+        <button class="btn btn-primary btn-large" id="btnStartEvening">
+          🎮 Начать игровой вечер
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Нижняя навигация -->
+  <nav class="bottom-nav">
+    <a href="index.html" class="bottom-nav-btn active">
+      <span class="nav-icon">👥</span>
+      <span>Игроки</span>
+    </a>
+    <a href="game.html" class="bottom-nav-btn">
+      <span class="nav-icon">🎮</span>
+      <span>Игра</span>
+    </a>
+    <a href="stats.html" class="bottom-nav-btn">
+      <span class="nav-icon">📊</span>
+      <span>Статистика</span>
+    </a>
+  </nav>
+
+  <script src="js/pages/players.js"></script>
+</body>
+</html>

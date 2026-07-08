@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Игра — Мафия</title>
+  <link rel="stylesheet" href="css/main.css" />
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════════════
+       ЕДИНЫЙ КОМПОНЕНТ — МЕНЮ ИГРЫ
+  ════════════════════════════════════════════════════ -->
+  <div class="game-menu-wrap" id="gameMenuComponent" style="display:none">
+    <button class="game-number-badge game-number-badge--btn" id="btnGameMenu">
+      <span class="game-number-badge__label">Игра №</span>
+      <span class="game-number-badge__value" id="gameNumberDisplay">1</span>
+      <span class="game-menu-arrow">▾</span>
+    </button>
+    <div class="game-dropdown" id="gameDropdown">
+      <button class="game-dropdown__item" id="ddFinish">
+        🏁 Завершить игру
+      </button>
+      <button class="game-dropdown__item" id="ddRestart">
+        🔄 Перезапустить игру
+      </button>
+      <button class="game-dropdown__item game-dropdown__item--danger" id="ddKick">
+        ✕ Удалить игрока
+      </button>
+    </div>
+  </div>
+
+
+
+  <!-- ═══════════════════════════════════════════════════
+       ФАЗА 1 — РАССАДКА
+  ════════════════════════════════════════════════════ -->
+  <div id="phase-seating" class="phase active">
+
+    <header class="game-header">
+      <button class="btn-icon" id="btnBackToPlayers" title="Назад">←</button>
+      <div class="game-header__info">
+        <div class="game-title" id="gameTitle">Мафия-клуб</div>
+        <div class="game-subtitle"><span id="gameDate"></span></div>
+      </div>
+      <div class="game-number-badge">
+        <span class="game-number-badge__label">Игра №</span>
+        <span class="game-number-badge__value" id="currentGameNumber">1</span>
+      </div>
+    </header>
+
+    <div class="seating-phase">
+      <ul id="seatingList" class="seating-drag-list"></ul>
+    </div>
+
+    <div class="seating-actions">
+      <button class="btn btn-secondary" id="btnApplySeating" disabled>
+        🔀 Применить рассадку
+      </button>
+      <button class="btn btn-primary" id="btnStartGame">
+        🎲 СТАРТ
+      </button>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       ФАЗА 2 — РАЗДАЧА РОЛЕЙ
+  ════════════════════════════════════════════════════ -->
+  <div id="phase-roles" class="phase">
+
+<header class="game-header game-header--roles">
+  <button class="btn-icon" id="btnRolesBack" title="Назад">←</button>
+  <div class="game-header__info">
+    <div class="game-title" id="roleGameTitle">Мафия-клуб</div>
+    <span id="roleGameNumber" style="display:none"></span>
+  </div>
+  <div class="phase-title-center">РОЛИ</div>
+</header>
+
+  <div class="roles-phase">
+    <ul id="rolesList" class="roles-list"></ul>
+    <div id="rolesCounter" class="roles-counter"></div>
+  </div>
+  
+    <div class="roles-actions">
+      <div class="role-buttons">
+        <button class="role-btn role-sheriff"  data-role="sheriff">ШЕР</button>
+        <button class="role-btn role-don"      data-role="don">ДОН</button>
+        <button class="role-btn role-mafia"    data-role="mafia">МАФ</button>
+        <button class="role-btn role-peaceful" data-role="peaceful">МИР</button>
+        <button class="role-btn role-maniac"   data-role="maniac">МАН</button>
+        <button class="role-btn role-doctor"   data-role="doctor">ДОК</button>
+        <button class="role-btn role-beauty"   data-role="beauty">КРА</button>
+        <button class="role-btn role-cancel"   id="btnCancelRole">✕</button>
+      </div>
+           
+      <button class="btn btn-success btn-large" id="btnRolesDone">
+        ✅ Готово
+      </button>
+    </div>
+
+  </div>
+
+    <!-- ═══════════════════════════════════════════════════
+       ФАЗА 3 — НУЛЕВАЯ НОЧЬ
+  ════════════════════════════════════════════════════ -->
+  <div id="phase-night0" class="phase">
+
+  <header class="game-header game-header--roles">
+    <!-- Уникальный id! -->
+    
+    <div class="game-header__info">
+      <div class="game-title" id="night0GameTitle">Мафия-клуб</div>
+    </div>
+    <div class="phase-title-center">НУЛЕВАЯ НОЧЬ</div>
+  </header>
+
+  <div class="roles-phase">
+    <ul id="night0List" class="roles-list"></ul>
+  </div>
+
+  <div class="night0-timer-wrap">
+    <span id="night0Timer" class="night0-timer">0:00</span>
+  </div>
+
+  <div class="roles-actions">
+    <button class="btn btn-primary btn-large" id="btnCityWakes">
+      🌅 Город просыпается
+    </button>
+  </div>
+
+</div>
+
+    <!-- ═══════════════════════════════════════════════════
+       ФАЗА 4 — ДЕНЬ
+  ════════════════════════════════════════════════════ -->
+  <div id="phase-day" class="phase">
+
+    <!-- Шапка -->
+    <header class="game-header game-header--roles">
+        <div class="game-header__info">
+        <div class="game-title" id="dayGameTitle">Мафия-клуб</div>
+      </div>
+      <span class="phase-title-center" id="dayPhaseTitle">0 ДЕНЬ</span>
+
+     
+    </header>
+
+    <!-- Список игроков -->
+    <div class="day-players-wrap">
+      <ul id="dayList" class="day-list"></ul>
+    </div>
+
+    <!-- Кнопка видимости ролей -->
+    <div class="roles-toggle-bar">
+      <button class="btn-roles-toggle" id="btnToggleRoles" title="Показать/скрыть роли">
+        <span class="eye-icon">🙈</span>
+        <span class="eye-label">Роли скрыты</span>
+      </button>
+    </div>
+
+    <!-- Таймер речи -->
+    <div class="speech-timer-wrap">
+      <div class="speech-timer-row">
+        <div class="speech-timer-block">
+          <span id="dayTimer" class="day-timer">0:45</span>
+          <span id="dayTimerLabel" class="day-timer-label">— — —</span>
+        </div>
+        <button class="btn btn-primary speech-btn" id="btnSpeech">
+          ▶ Речь
+        </button>
+      </div>
+    </div>
+
+    <!-- Числовой ряд игроков -->
+    <div class="nomination-wrap">
+  <div id="nominationRow" class="nomination-row"></div>
+  
+</div>
+
+  </div>
+
+<!-- ═══════════════════════════════════════════════════
+   <!-- ФАЗА 6 — ГОЛОСОВАНИЕ -->
+    ____________________________________________________
+
+<div id="phase-vote" class="phase">
+
+  <header class="game-header game-header--roles">
+    <button class="btn-icon" id="btnVoteBack">←</button>
+    <div class="game-header__info">
+      <div class="game-title" id="voteGameTitle">Мафия-клуб</div>
+    </div>
+    <span class="phase-title-center" id="votePhaseTitle">1 ГОЛОСОВАНИЕ</span>
+  </header>
+
+  <div class="day-players-wrap">
+    <ul id="voteList" class="day-list"></ul>
+  </div>
+
+  <div class="roles-toggle-bar">
+    <button class="btn-roles-toggle" id="btnVoteToggleRoles">
+      <span class="eye-icon">🙈</span>
+      <span class="eye-label">Роли скрыты</span>
+    </button>
+  </div>
+
+    <div class="vote-big-num-wrap">
+    <div class="vote-big-num-row">
+      <div id="voteBigNum" class="vote-big-num">—</div>
+      <div id="voteTimerWrap" style="display:none;">
+      <div id="voteTimerInline">
+        <span id="voteTimer">0:45</span>
+        <span id="voteTimerLabel"></span>
+      </div>
+    </div>
+
+  </div>
+  <div id="voteBigName" class="vote-big-name"></div>
+</div>
+
+  <div class="vote-num-wrap">
+  <div class="vote-num-row-outer">
+    <div id="voteNumRow" class="vote-num-row"></div>
+    <button id="btnVoteCancel" class="vote-num-btn vote-cancel-btn" disabled>✕</button>
+  </div>
+</div>
+
+  <div class="vote-actions">
+    <button class="btn btn-primary btn-large" id="btnVoteNext" disabled>
+      Далее ▶
+    </button>
+    <button class="btn btn-primary btn-large" id="btnRunoffSpeech" style="display:none">
+      ▶ Речь (попил)
+    </button>
+    <button class="btn btn-primary btn-large" id="btnRunoffVote" style="display:none">
+      🔁 Повторное голосование
+    </button>
+    <button class="btn btn-primary btn-large" id="btnVoteLastWord" style="display:none">
+      ▶ Последнее слово
+    </button>
+    <button class="btn btn-success btn-large" id="btnVoteDone" style="display:none">
+      🌙 Завершить голосование
+    </button>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     МОДАЛКА — УДАЛИТЬ ВСЕХ (ничья в попиле)
+════════════════════════════════════════════════════ -->
+<div id="runoffDrawModal" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-text">
+      Ничья в повторном голосовании.<br>
+      Удалить всех участников попила?
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-danger"    id="runoffDrawYes">Да, удалить всех</button>
+      <button class="btn btn-secondary" id="runoffDrawNo">Нет, оставить всех</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     МОДАЛКА — НАСТУПАЕТ НОЧЬ
+════════════════════════════════════════════════════ -->
+<div id="nightComingModal" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-text">🌙 Наступает ночь</div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="btnNightComing">
+        Далее ▶
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════
+     ФАЗА 5 — НОЧЬ
+════════════════════════════════════════════════════ -->
+<div id="phase-night" class="phase">
+
+  <!-- Шапка -->
+  <header class="game-header game-header--roles">
+    <div class="game-header__info">
+      <div class="game-title" id="nightGameTitle">Мафия-клуб</div>
+    </div>
+    <span class="phase-title-center" id="nightPhaseTitle">1 НОЧЬ</span>
+    
+  </header>
+
+  <!-- Текущий ход -->
+  <div class="night-step-bar">
+    <span id="nightStepLabel" class="night-step-label">Просыпается Мафия</span>
+  </div>
+
+  <!-- Таймер -->
+  <div class="night-timer-wrap">
+    <span id="nightTimer" class="night-timer">0:45</span>
+  </div>
+
+  <!-- Список игроков -->
+  <div class="night-players-wrap">
+    <ul id="nightList" class="night-list"></ul>
+  </div>
+
+  <!-- Числовой ряд -->
+  <div class="night-num-wrap">
+    <div id="nightNumRow" class="night-num-row"></div>
+  </div>
+
+  <!-- Кнопки управления -->
+  <div class="night-actions">
+
+    <!-- Кнопка "Далее: следующая роль" — видна во время ходов -->
+    <button class="btn btn-primary btn-large" id="btnNightNext" disabled>
+      Далее ▶
+    </button>
+
+    <!-- Кнопка "Подвести итоги" — появляется после последнего хода -->
+    <button class="btn btn-primary btn-large" id="btnNightDebrief"
+            style="display:none">
+      🌅 Город просыпается
+    </button>
+
+    <!-- Кнопка "Речь" для последнего слова убитых -->
+    <button class="btn btn-primary btn-large" id="btnLastWord"
+            style="display:none">
+      ▶ Речь
+    </button>
+
+    <!-- Кнопка перехода в день -->
+    <button class="btn btn-success btn-large" id="btnGoToDay"
+            style="display:none">
+      1 День ▶
+    </button>
+
+  </div>
+
+</div>
+
+  <!-- ═══════════════════════════════════════════════════
+       МОДАЛЬНОЕ ОКНО — ПОДТВЕРЖДЕНИЕ
+  ════════════════════════════════════════════════════ -->
+  <div id="confirmModal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-text" id="confirmText">Точно?</div>
+      <div class="modal-actions">
+        <button class="btn btn-danger"     id="confirmYes">Да</button>
+        <button class="btn btn-secondary"  id="confirmNo">Нет</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       МОДАЛЬНОЕ ОКНО — УДАЛИТЬ ИГРОКА
+  ════════════════════════════════════════════════════ -->
+  <div id="kickModal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-text">Введите номер игрока для удаления:</div>
+      <input id="kickInput" type="number" min="1" max="20"
+             placeholder="Номер места" class="modal-input" />
+      <div class="modal-actions">
+        <button class="btn btn-danger"    id="kickConfirmBtn">Удалить</button>
+        <button class="btn btn-secondary" id="kickCancelBtn">Отмена</button>
+      </div>
+    </div>
+  </div>
+
+  
+
+  <script src="js/pages/game.js"></script>
+</body>
+</html>
