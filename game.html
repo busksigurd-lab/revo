@@ -370,6 +370,63 @@
     </div>
   </div>
 
+  <!-- ═══════════════════════════════════════════════════
+     ФАЗА 7 — ЗАВЕРШЕНИЕ ИГРЫ
+════════════════════════════════════════════════════ -->
+<div id="phase-finish" class="phase">
+
+  <header class="game-header game-header--roles">
+    <div class="game-header__info">
+      <div class="game-title" id="finishGameTitle">Мафия-клуб</div>
+    </div>
+    <span class="phase-title-center">ИТОГ ИГРЫ</span>
+  </header>
+
+  <!-- Список игроков с допами -->
+  <div class="day-players-wrap">
+    <ul id="finishList" class="day-list"></ul>
+  </div>
+
+  <!-- Победитель -->
+  <div class="finish-winner-wrap">
+    <div class="finish-section-title">🏆 Победившая команда</div>
+    <div class="finish-winner-row">
+      <button class="finish-team-btn" data-team="civil">
+        <span class="finish-team-icon">🕊</span>
+        <span class="finish-team-label">Мирные</span>
+      </button>
+      <button class="finish-team-btn" data-team="mafia">
+        <span class="finish-team-icon">🔫</span>
+        <span class="finish-team-label">Мафия</span>
+      </button>
+      <button class="finish-team-btn" data-team="maniac">
+        <span class="finish-team-icon">🔪</span>
+        <span class="finish-team-label">Маньяк</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Кнопка подтверждения -->
+  <div class="finish-actions">
+    <button class="btn btn-success btn-large" id="btnFinishConfirm" disabled>
+      ✅ Подтвердить результат
+    </button>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     МОДАЛКА — ПОДТВЕРЖДЕНИЕ ЗАВЕРШЕНИЯ
+════════════════════════════════════════════════════ -->
+<div id="finishModal" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-text">Завершить игру и сохранить результат?</div>
+    <div class="modal-actions">
+      <button class="btn btn-success" id="finishModalYes">✅ Да</button>
+      <button class="btn btn-secondary" id="finishModalNo">Нет</button>
+    </div>
+  </div>
+</div>
   
 
   <script src="js/pages/game.js"></script>

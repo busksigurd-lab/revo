@@ -24,6 +24,14 @@ const GameState = {
   phase:          'seating',
   roles:          [],
   currentSeatIdx: 0,
+
+  // ── Протокол игры ──────────────────────────────────
+  protocol: {
+    // Ночные ходы: { 1: { mafia: 5, don: 3, sheriff: '-', ... }, 2: {...} }
+    nights:     {},
+    // Дневные действия игроков: { seat: { 'd0': 'v', 'd1': 'x', ... } }
+    dayActions: {},
+  },
 };
 
 // ── Инициализация ───────────────────────────────────────────
@@ -37,7 +45,39 @@ document.addEventListener('DOMContentLoaded', () => {
   bindNightEvents();
   bindGameMenuEvents();
   initVotePhase();
-});
+  bindFinishEvents();
+
+  // ✅ ДОБАВЬ СЮДА (перенеси из уровня модуля):
+  document.getElementById('confirmYes').addEventListener('click', () => {
+    document.getElementById('confirmModal').classList.remove('open');
+    document.getElementById('confirmYes').textContent  = 'Да';
+    document.getElementById('confirmNo').style.display = '';
+    if (confirmCallback) confirmCallback();
+    confirmCallback = null;
+  });
+
+  document.getElementById('confirmNo').addEventListener('click', () => {
+    document.getElementById('confirmModal').classList.remove('open');
+    document.getElementById('confirmYes').textContent  = 'Да';
+    document.getElementById('confirmNo').style.display = '';
+    confirmCallback = null;
+  });
+
+  document.getElementById('kickConfirmBtn').addEventListener('click', () => {
+    const num    = parseInt(document.getElementById('kickInput').value);
+    const player = dayState.players.find(p => p.seat === num);
+    if (!player) { alert('Игрок не найден'); return; }
+    document.getElementById('kickModal').classList.remove('open');
+    openConfirm(`Удалить #${player.seat} ${player.name}?`, () => {
+      eliminatePlayer(dayState.players.indexOf(player), 'manual');
+    });
+  });
+
+  document.getElementById('kickCancelBtn').addEventListener('click', () => {
+    document.getElementById('kickModal').classList.remove('open');
+  });
+
+}); // ← единственная закрывающая скобка
 
 // ════════════════════════════════════════════════════════════
 //  ЗАГРУЗКА ДАННЫХ
@@ -55,9 +95,16 @@ function loadEveningData() {
   const saved = JSON.parse(localStorage.getItem('gameState') || 'null');
   if (saved?.currentGameNum) GameState.currentGameNum = saved.currentGameNum;
 
+  // ✅ ИСПРАВЛЕНО: сначала проверяем рассадку вечера для текущей игры,
+  // если нет — берём базовый список игроков
+  const seatingFromEvening = evening.seatings?.[GameState.currentGameNum];
+  
   if (saved?.currentSeating?.length) {
     GameState.currentSeating = saved.currentSeating;
+  } else if (seatingFromEvening?.length) {
+    GameState.currentSeating = [...seatingFromEvening];
   } else {
+    // ✅ Базовый список с главного экрана
     GameState.currentSeating = [...GameState.players];
   }
 }
@@ -145,29 +192,45 @@ function initDragAndDrop(list) {
 function applyGeneratedSeating() {
   const seatings = GameState.evening.seatings;
   const num      = GameState.currentGameNum;
-  if (!seatings?.[num]) return;
+
+  // seatings[1] = Игра 1, seatings[2] = Игра 2 и т.д. ✅
+  if (!seatings?.[num]) {
+    showToast('Рассадка не найдена', 'error');
+    return;
+  }
+  
   GameState.currentSeating = [...seatings[num]];
   renderSeatingList();
   showToast(`Рассадка №${num} применена ✅`);
 }
 
-function startGame() {
-  if (GameState.currentSeating.length < 4) {
-    showToast('Нужно минимум 4 игрока!', 'error'); return;
-  }
-  saveGameState();
-  initRolesPhase();
-  switchPhase('roles');
-}
+// ════════════════════════════════════════════════════════════
+//  ПРИВЯЗКА СОБЫТИЙ РАССАДКИ
+// ════════════════════════════════════════════════════════════
 
 function bindSeatingEvents() {
+  // ✅ ДОБАВИТЬ — кнопка "Назад" → возврат на главную
   document.getElementById('btnBackToPlayers')
-    .addEventListener('click', () => { window.location.href = 'index.html'; });
+    ?.addEventListener('click', () => {
+      window.location.href = 'index.html';
+    });
+
   document.getElementById('btnApplySeating')
-    .addEventListener('click', applyGeneratedSeating);
+    ?.addEventListener('click', applyGeneratedSeating);
+
   document.getElementById('btnStartGame')
-    .addEventListener('click', startGame);
+    ?.addEventListener('click', () => {
+      if (GameState.currentSeating.length === 0) {
+        showToast('Нет игроков в рассадке', 'error');
+        return;
+      }
+      saveGameState();
+      initRolesPhase();
+      switchPhase('roles');
+    });
 }
+
+
 
 // ════════════════════════════════════════════════════════════
 //  ФАЗА 2 — РАЗДАЧА РОЛЕЙ
@@ -353,14 +416,29 @@ function bindNight0Events() {
 //  ФАЗА 4 — ДЕНЬ
 // ════════════════════════════════════════════════════════════
 
-const SPEECH_SECONDS  = 45;
 const WARN_SECONDS    = 10;
 const TOURNAMENT_MODE = false;
+
+function getSpeechSeconds() {
+  const raw = localStorage.getItem('appSettings');
+  if (!raw) return 45;
+  const data = JSON.parse(raw);
+  const preset = data.presets?.[data.activePreset];
+  return preset?.speechSeconds ?? 45;
+}
+
+function getExtraStep() {
+  const raw = localStorage.getItem('appSettings');
+  if (!raw) return 1;
+  const data = JSON.parse(raw);
+  const preset = data.presets?.[data.activePreset];
+  return preset?.extraStep ?? 1;
+}
 
 const dayState = {
   players:           [],
   currentIdx:        -1,
-  timerSec:          SPEECH_SECONDS,
+  timerSec:          getSpeechSeconds(),
   timerRunning:      false,
   timerInterval:     null,
   round:             0,
@@ -420,7 +498,7 @@ function startDay() {
   // Сброс состояния дня
   dayState.eliminatedThisDay = false;
   dayState.currentIdx        = -1;
-  dayState.timerSec          = SPEECH_SECONDS;
+  dayState.timerSec          = getSpeechSeconds();
   dayState.timerRunning      = false;
   dayState.speechRound       = 0;
   dayState.lastSpeech        = false;
@@ -548,8 +626,16 @@ function handleDayListClick(e) {
     return;
   }
 
-  if (action === 'extra-inc') { p.extra++; renderDayList(); return; }
-  if (action === 'extra-dec') { p.extra--; renderDayList(); return; }
+  if (action === 'extra-inc') {
+  p.extra = Math.round((p.extra + getExtraStep()) * 1000) / 1000;
+  renderDayList();
+  return;
+  }
+  if (action === 'extra-dec') {
+  p.extra = Math.round((p.extra - getExtraStep()) * 1000) / 1000;
+  renderDayList();
+  return;
+  }
 
   if (action === 'eliminate') {
     if (p.alive) {
@@ -571,6 +657,10 @@ function eliminatePlayer(idx, reason) {
   const p = dayState.players[idx];
   p.alive = false;
   p.eliminationReason = reason;
+  const actionCode = reason === 'foul' ? 'у' : 
+                     reason === 'vote' ? 'x' : 'у';
+  recordDayAction(p.seat, dayState.round, actionCode);
+
 
   if (reason === 'foul') p.fouls = 4;
 
@@ -613,7 +703,7 @@ function renderDayTimer() {
 
 function startSpeechTimer() {
   clearInterval(dayState.timerInterval);
-  dayState.timerSec     = SPEECH_SECONDS;
+  dayState.timerSec     = getSpeechSeconds();
   dayState.timerRunning = true;
   renderDayTimer();
 
@@ -740,6 +830,8 @@ function renderNominationRow() {
 
       const voter = dayState.players[dayState.currentIdx];
       voter.nominee = p.seat;
+            // Записываем: этот игрок выставил кого-то
+      recordDayAction(voter.seat, dayState.round, 'v');
 
       // Записываем порядок выдвижения если ещё не выдвинут
       if (p.nomineeOrder === null) {
@@ -887,12 +979,14 @@ function bindGameMenuEvents() {
   });
 
   document.getElementById('ddFinish').addEventListener('click', () => {
-    gameDropdown.classList.remove('open');
-    openConfirm('Завершить игру?', () => {
-      stopDay();
-      showToast('Игра завершена!', 'info');
-    });
+  gameDropdown.classList.remove('open');
+  openConfirm('Перейти к подтверждению результата?', () => {
+    stopDay();
+    clearInterval(nightState.timerInterval);
+    clearInterval(voteState.timerInterval);
+    openFinishPhase();
   });
+});
 
   document.getElementById('ddRestart').addEventListener('click', () => {
     gameDropdown.classList.remove('open');
@@ -940,6 +1034,25 @@ const nightState = {
   bgMap:          {},
   isDebrief:      false,
 };
+
+// ── Запись ночного хода в протокол ──────────────────
+function recordNightAction(roundNum, stepKey, value) {
+  // value: число (номер места) | '-' (отказ) | null (пропуск — роль мертва)
+  if (!GameState.protocol.nights[roundNum]) {
+    GameState.protocol.nights[roundNum] = {};
+  }
+  GameState.protocol.nights[roundNum][stepKey] = value;
+}
+
+// ── Запись дневного действия в протокол ─────────────
+// action: 'v' (выставил), 'x' (удалён голосованием),
+//         'у' (удалён ведущим/фолом), '-' (отказ от слова)
+function recordDayAction(seat, roundNum, action) {
+  if (!GameState.protocol.dayActions[seat]) {
+    GameState.protocol.dayActions[seat] = {};
+  }
+  GameState.protocol.dayActions[seat][`d${roundNum}`] = action;
+}
 
 // ── Запуск ночи ──────────────────────────────────────────────
 function startNight(roundNum) {
@@ -991,13 +1104,17 @@ function renderNightStep() {
 
   // ✅ Если игрок роли мёртв — сразу разблокируем, иначе блокируем
   document.getElementById('btnNightNext').disabled = stepPlayerAlive;
+  // Если носитель роли мёртв — записываем null (пропуск)
+  if (!stepPlayerAlive) {
+    recordNightAction(nightState.round, step.key, null);
+  }
 
   renderNightList();
   renderNightNumRow(stepPlayerAlive);
   startNightTimer(step.seconds);
 }
 
-// ── Список игроков ───────────────────────────────────────────
+// — Список игроков —
 function renderNightList() {
   const ul = document.getElementById('nightList');
   ul.innerHTML = '';
@@ -1018,16 +1135,14 @@ function renderNightList() {
 
     const bg = nightState.bgMap[p.seat];
     if (bg === 'night-killed') li.classList.add('night-killed');
-
-    if (nightState.flashMap[p.seat]) {
-      li.classList.add(nightState.flashMap[p.seat]);
-    }
+    if (bg === 'night-green')  li.classList.add('night-green');
+    if (nightState.redMap && nightState.redMap[p.seat]) li.classList.add('flash-red');
 
     if (!nightState.isDebrief && nightState.selectedSeat === p.seat) {
       li.classList.add('night-selected');
     }
 
-    const roleKey = Object.keys(ROLES_CONFIG)
+    const roleKey   = Object.keys(ROLES_CONFIG)
       .find(k => ROLES_CONFIG[k].short === p.role) || '';
     const roleClass = roleKey ? `role-tag--${roleKey}` : '';
 
@@ -1040,6 +1155,15 @@ function renderNightList() {
           : ''}
       </div>
     `;
+
+    // Flash — добавляем ПОСЛЕ innerHTML, чтобы не потерять listener
+    const flashClass = nightState.flashMap[p.seat];
+    if (flashClass) {
+      li.classList.add(flashClass);
+      li.addEventListener('animationend', () => {
+        li.classList.remove(flashClass);
+      }, { once: true });
+    }
 
     ul.appendChild(li);
   });
@@ -1071,15 +1195,36 @@ function renderNightNumRow(actionsAllowed = true) {
     row.appendChild(btn);
   });
 
-  // Кнопка отмены
+    // Кнопка отказа от хода
   const cancel = document.createElement('button');
   cancel.className   = 'night-num-cancel';
   cancel.textContent = '✕';
-  cancel.title       = 'Отмена';
+  cancel.title       = 'Отказ от хода';
+
   if (!actionsAllowed) {
     cancel.disabled = true;
   } else {
-    cancel.addEventListener('click', () => cancelNightSelection());
+    cancel.addEventListener('click', () => {
+      const step = NIGHT_STEPS[nightState.stepIdx];
+
+      if (nightState.selectedSeat !== null) {
+        // Если что-то выбрано — сначала отменяем выбор
+        cancelNightStepAction(step.key, nightState.selectedSeat);
+        nightState.selectedSeat = null;
+        nightState.stepDone     = false;
+      }
+
+      // Записываем отказ от хода
+      recordNightAction(nightState.round, step.key, '-');
+      nightState.stepDone = true;
+
+      // Разблокируем кнопку "Далее"
+      document.getElementById('btnNightNext').disabled = false;
+
+      renderNightList();
+      renderNightNumRow();
+      showToast('Отказ от хода записан', 'info');
+    });
   }
   row.appendChild(cancel);
 }
@@ -1113,8 +1258,11 @@ function cancelNightStepAction(stepKey, seat) {
       break;
     }
     case 'sheriff': {
-      nightState.sheriffChecked = null;
+      nightState.donChecked = null;
+      // Удаляем bgMap только если там НЕ night-killed
+      if (nightState.bgMap[seat] !== 'night-killed') {
       delete nightState.bgMap[seat];
+  }
       break;
     }
     case 'maniac': {
@@ -1178,6 +1326,7 @@ function handleNightNumClick(seat) {
   applyNightStepAction(step.key, seat, target);
 
   nightState.stepDone = true;
+  recordNightAction(nightState.round, step.key, seat);
   document.getElementById('btnNightNext').disabled = false;
 
   renderNightList();
@@ -1216,20 +1365,25 @@ function applyNightStepAction(stepKey, seat, target) {
       break;
     }
     case 'don': {
-      nightState.donChecked     = seat;
-      nightState.flashMap[seat] = target.role === 'ШЕР'
-        ? 'flash-red' : 'flash-green';
-      break;
+    nightState.donChecked = seat;
+    if (target.role === 'ШЕР') {
+    nightState.flashMap[seat] = 'flash-yellow';
+    // bgMap не трогаем — night-killed должен сохраняться
     }
+    break;
+    }
+    
     case 'sheriff': {
       nightState.sheriffChecked = seat;
-      const isBlack     = target.role === 'МАФ' || target.role === 'ДОН';
-      const hasMafia    = dayState.players.some(
+      const isBlack       = target.role === 'МАФ' || target.role === 'ДОН';
+      const hasMafia      = dayState.players.some(
         p => p.alive && (p.role === 'МАФ' || p.role === 'ДОН')
       );
       const maniacIsBlack = target.role === 'МАН' && !hasMafia;
-      nightState.flashMap[seat] = (isBlack || maniacIsBlack)
-        ? 'flash-green' : 'flash-red';
+      if (isBlack || maniacIsBlack) {
+        nightState.flashMap[seat] = 'flash-yellow';
+        
+      }
       break;
     }
     case 'maniac': {
@@ -1253,7 +1407,6 @@ function applyNightStepAction(stepKey, seat, target) {
       const beautyPlayer = dayState.players.find(p => p.role === 'КРА');
       const beautyKilled = beautyPlayer
         ? !!nightState.nightKilled[beautyPlayer.seat] : false;
-
       if (beautyKilled) {
         const docHealed = nightState.healedByDoc === seat;
         if (!docHealed) {
@@ -1287,10 +1440,11 @@ function startNightDebrief() {
   });
 
   Object.keys(nightState.bgMap).forEach(seat => {
-    if (nightState.bgMap[seat] !== 'night-killed') {
-      delete nightState.bgMap[seat];
-    }
-  });
+  if (nightState.bgMap[seat] !== 'night-killed' &&
+      nightState.bgMap[seat] !== 'night-green') {
+    delete nightState.bgMap[seat];
+  }
+});
   nightState.flashMap = {};
 
   document.getElementById('nightNumRow').style.display     = 'none';
@@ -1397,7 +1551,7 @@ function startLastWordTimer(p) {
     nightState.lastWordsIdx++;
     renderLastWordSpeaker();
   };
-  startNightTimer(SPEECH_SECONDS);
+  startNightTimer(getSpeechSeconds());
 }
 
 // ── Финал ночи: переход в день ────────────────────────────────
@@ -1913,7 +2067,7 @@ function setupRunoffSpeechBtn() {
       // Запускаем таймер речи
       btn.dataset.state = 'running';
       document.getElementById('voteTimerWrap').style.display = 'block';
-      startVoteTimer(SPEECH_SECONDS, () => {
+      startVoteTimer(getSpeechSeconds(), () => {;
         // По окончании таймера меняем текст кнопки
         if (isLast) {
           btn.textContent = '🗳 Голосование';
@@ -2071,7 +2225,7 @@ function showNextLastWord() {
 
   // Запускаем таймер
   document.getElementById('voteTimerWrap').style.display = 'block';
-  startVoteTimer(SPEECH_SECONDS, () => {});
+  startVoteTimer(getSpeechSeconds(), () => {});
 
   const btnLW  = document.getElementById('btnVoteLastWord');
   const isLast = voteState.lastWordIdx >= voteState.lastWordPlayers.length - 1;
@@ -2203,3 +2357,200 @@ function initVotePhase() {
   });
 
 } // ← конец initVotePhase
+
+// ════════════════════════════════════════════════════════════
+//  ФАЗА 7 — ЗАВЕРШЕНИЕ ИГРЫ
+// ════════════════════════════════════════════════════════════
+
+const finishState = {
+  winner: null,   // 'civil' | 'mafia' | 'maniac'
+};
+
+// ── Открыть экран завершения ─────────────────────────────────
+function openFinishPhase() {
+  finishState.winner = null;
+
+  document.getElementById('finishGameTitle').textContent =
+    GameState.evening?.title || 'Мафия-клуб';
+
+  renderFinishList();
+  updateFinishWinnerUI();
+  updateFinishConfirmBtn();
+
+  switchPhase('finish');
+}
+
+// ── Список игроков с допами ──────────────────────────────────
+function renderFinishList() {
+  const ul = document.getElementById('finishList');
+  if (!ul) return;
+  ul.innerHTML = '';
+
+  const players = dayState.players.length
+    ? dayState.players
+    : GameState.currentSeating.map((name, i) => ({
+        seat: i + 1, name,
+        role: ROLES_CONFIG[GameState.roles[i]]?.short || '',
+        alive: true, fouls: 0, extra: 0,
+      }));
+
+  const alive = players.filter(p => p.alive);
+  const dead  = players.filter(p => !p.alive);
+  [...alive, ...dead].forEach(p => {
+    const idx = players.indexOf(p);
+    const roleClass = roleTagClass(p.role);
+
+    const li = document.createElement('li');
+    li.className = 'day-player-item' + (!p.alive ? ' eliminated' : '');
+    li.innerHTML = `
+      <span class="day-seat-num">${p.seat}</span>
+      <span class="day-seat-name">${p.name}</span>
+      <div class="day-role-slot">
+        ${roleClass
+          ? `<span class="role-tag ${roleClass} day-role-tag">${p.role}</span>`
+          : ''}
+      </div>
+      <div class="extra-cell">
+        <span class="extra-cell-label">ДОП</span>
+        <div class="extra-cell-controls">
+          <button class="extra-btn" data-idx="${idx}" data-action="extra-dec">−</button>
+          <span class="extra-value">${p.extra ?? 0}</span>
+          <button class="extra-btn" data-idx="${idx}" data-action="extra-inc">+</button>
+        </div>
+      </div>
+    `;
+    ul.appendChild(li);
+  });
+}
+
+// ── Подсветка выбранной команды ──────────────────────────────
+function updateFinishWinnerUI() {
+  document.querySelectorAll('.finish-team-btn').forEach(btn => {
+    btn.classList.toggle('selected', btn.dataset.team === finishState.winner);
+  });
+}
+
+// ── Активация кнопки подтверждения ──────────────────────────
+function updateFinishConfirmBtn() {
+  const btn = document.getElementById('btnFinishConfirm');
+  if (btn) btn.disabled = !finishState.winner;
+}
+
+// ── Получить баллы за победу из настроек ────────────────────
+function getWinPoints() {
+  const raw = localStorage.getItem('appSettings');
+  if (!raw) return { civil: 4, mafia: 5, maniac: 6 };
+  const data = JSON.parse(raw);
+  const preset = data.presets?.[data.activePreset];
+  return preset?.winPoints || { civil: 4, mafia: 5, maniac: 6 };
+}
+
+// ── Определить команду игрока по роли ───────────────────────
+function getTeamByRole(roleShort) {
+  if (roleShort === 'МАФ' || roleShort === 'ДОН') return 'mafia';
+  if (roleShort === 'МАН') return 'maniac';
+  return 'civil';
+}
+
+function saveGameResult() {
+  const winner    = finishState.winner;
+  const winPoints = getWinPoints();
+  const pointsForWin = winPoints[winner] ?? 4;
+
+  const players = dayState.players.length
+    ? dayState.players
+    : GameState.currentSeating.map((name, i) => ({
+        seat: i + 1, name,
+        role: ROLES_CONFIG[GameState.roles[i]]?.short || '',
+        extra: 0,
+      }));
+
+  const playerResults = players.map(p => {
+    const team = getTeamByRole(p.role);
+    const won  = team === winner;
+    const base = won ? pointsForWin : 0;
+    const extra = p.extra ?? 0;
+    const total = Math.round((base + extra) * 1000) / 1000;
+
+    return {
+      seat:  p.seat,
+      name:  p.name,
+      role:  p.role,
+      team,
+      won,
+      base,
+      extra,
+      total,
+      fouls: p.fouls ?? 0,
+      eliminationReason: p.eliminationReason || null,
+    };
+  });
+
+  const gameResult = {
+    gameNum:   GameState.currentGameNum,
+    winner,
+    finished:  true,
+    seating:   GameState.currentSeating,
+    roles:     GameState.roles,
+    players:   playerResults,
+    protocol:  GameState.protocol,
+    timestamp: Date.now(),
+  };
+
+  // ✅ Загружаем существующие и ТОЛЬКО обновляем нужную игру
+  const eveningResults = JSON.parse(
+    localStorage.getItem('eveningResults') || 'null'
+  ) || {
+    title:     GameState.evening?.title || '',
+    date:      GameState.evening?.date  || '',
+    games:     {},
+    createdAt: Date.now(),
+  };
+
+  eveningResults.games[GameState.currentGameNum] = gameResult;
+  localStorage.setItem('eveningResults', JSON.stringify(eveningResults));
+
+  showToast(`Игра №${GameState.currentGameNum} сохранена ✅`);
+}
+
+// ── Привязка событий финиша ──────────────────────────────────
+function bindFinishEvents() {
+
+  // Клики по допам внутри finishList
+  document.getElementById('finishList')
+    ?.addEventListener('click', handleDayListClick);
+
+  // Выбор команды-победителя
+  document.querySelectorAll('.finish-team-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      finishState.winner = btn.dataset.team;
+      updateFinishWinnerUI();
+      updateFinishConfirmBtn();
+    });
+  });
+
+  // Кнопка "Подтвердить"
+  document.getElementById('btnFinishConfirm')
+    ?.addEventListener('click', () => {
+      if (!finishState.winner) return;
+      document.getElementById('finishModal').classList.add('open');
+    });
+
+  // Модалка — Да
+  document.getElementById('finishModalYes')
+  ?.addEventListener('click', () => {
+    document.getElementById('finishModal').classList.remove('open');
+    saveGameResult();
+    GameState.currentGameNum++;
+    saveGameState();
+
+    // ← было: window.location.href = 'index.html';
+    window.location.href = 'results.html';
+  });
+
+  // Модалка — Нет
+  document.getElementById('finishModalNo')
+    ?.addEventListener('click', () => {
+      document.getElementById('finishModal').classList.remove('open');
+    });
+}

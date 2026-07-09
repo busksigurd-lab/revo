@@ -1,0 +1,226 @@
+/* ============================================================
+   SETTINGS.CSS
+   ============================================================ */
+
+/* ── Подсказки ── */
+.settings-hint {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+/* ── Пресеты ── */
+.preset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.preset-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.preset-item.active {
+  border-color: #4caf50;
+  background: rgba(76, 175, 80, 0.1);
+}
+
+.preset-item__name {
+  flex: 1;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.preset-active-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  background: rgba(232,184,75,0.15);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.preset-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.preset-item__check {
+  font-size: 16px;
+  font-weight: 700;
+  color: #4caf50;
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.preset-item__delete {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  transition: color 0.2s;
+}
+
+.preset-item__delete:hover {
+  color: #e53935;
+}
+
+.preset-name-input {
+  flex: 1;
+}
+
+/* ── Кнопки длительности речи ── */
+.speech-btns {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.speech-preset-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.speech-preset-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.speech-preset-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #000;
+}
+
+.speech-current {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.speech-current strong {
+  color: var(--accent);
+}
+
+/* ── Тоггл (переключатель) ── */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+
+.toggle-label {
+  font-size: 15px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.toggle-wrap {
+  position: relative;
+  width: 48px;
+  height: 26px;
+  flex-shrink: 0;
+}
+
+.toggle-input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.toggle-slider {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-input);
+  border: 1.5px solid var(--border);
+  border-radius: 13px;
+  transition: all 0.25s;
+  cursor: pointer;
+}
+
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  top: 2px;
+  left: 2px;
+  transition: all 0.25s;
+}
+
+.toggle-input:checked + .toggle-slider {
+  background: rgba(232,184,75,0.2);
+  border-color: var(--accent);
+}
+
+.toggle-input:checked + .toggle-slider::before {
+  background: var(--accent);
+  transform: translateX(22px);
+}
+
+/* ── Очки ── */
+.points-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.points-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.points-label {
+  width: 80px;
+  font-size: 14px;
+  color: var(--text);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.points-input {
+  width: 100px !important;
+  text-align: center;
+}
+
+/* ── Шаг допов ── */
+.extra-step-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.extra-step-unit {
+  font-size: 14px;
+  color: var(--text-muted);
+}

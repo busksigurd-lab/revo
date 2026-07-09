@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Мафия — Результаты</title>
+
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#000000">
+  <link rel="stylesheet" href="css/main.css" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <link rel="icon" href="./icons/icon-192.png" type="image/png">
+</head>
+<body>
+
+  <header class="app-header">
+    <button class="burger" id="burgerBtn">☰</button>
+    <span class="header-title">🏆 Результаты вечера</span>
+  </header>
+
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <span class="app-title">🃏 Мафия</span>
+      <button class="sidebar-close" id="sidebarClose">✕</button>
+    </div>
+    <ul class="nav-list">
+      <li><a href="index.html"   class="nav-link">👥 Игроки</a></li>
+      <li><a href="game.html"    class="nav-link">🎮 Игра</a></li>
+      <li><a href="results.html" class="nav-link active">🏆 Результаты</a></li>
+      <li><a href="stats.html"   class="nav-link">📊 Статистика</a></li>
+      <li><a href="settings.html"class="nav-link">⚙️ Настройки</a></li>
+    </ul>
+    <div class="sidebar-footer">
+      <span class="text-muted" style="font-size:12px;">v1.0.0</span>
+    </div>
+  </nav>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <main class="main-content">
+
+    <!-- ── Заголовок вечера ── -->
+    <div class="card results-header-card">
+      <div class="results-evening-title" id="resultsEveningTitle">
+        Загрузка...
+      </div>
+      <div class="results-evening-date" id="resultsEveningDate"></div>
+    </div>
+
+    <!-- ── Фильтр / переключатель ── -->
+    <div class="card results-filter-card">
+      <div class="results-tabs-nav" id="resultsTabsNav">
+        <!-- Кнопки: Сводная | Игра 1 | Игра 2 | ... -->
+      </div>
+    </div>
+
+    <!-- ── Тело результатов ── -->
+    <div id="resultsBody">
+      <!-- Рендерится JS -->
+    </div>
+
+    <!-- ── Экшн-кнопки ── -->
+    <div class="card results-actions-card">
+      <button class="btn btn-secondary btn-large" id="btnExportResults">
+        📤 Экспорт в файл
+      </button>
+      <button class="btn btn-primary btn-large" id="btnSaveToHistory">
+        💾 Сохранить в историю
+      </button>
+    </div>
+
+  </main>
+
+  <!-- Нижняя навигация -->
+  <nav class="bottom-nav">
+    <a href="index.html"    class="bottom-nav-btn">
+      <span class="nav-icon">👥</span><span>Игроки</span>
+    </a>
+    <a href="game.html"     class="bottom-nav-btn">
+      <span class="nav-icon">🎮</span><span>Игра</span>
+    </a>
+    <a href="results.html"  class="bottom-nav-btn active">
+      <span class="nav-icon">🏆</span><span>Итоги</span>
+    </a>
+    <a href="stats.html"    class="bottom-nav-btn">
+      <span class="nav-icon">📊</span><span>Статистика</span>
+    </a>
+  </nav>
+
+  <script src="js/pages/results.js"></script>
+  
+</body>
+</html>

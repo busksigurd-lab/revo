@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Мафия — Статистика</title>
+
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#000000">
+  <link rel="stylesheet" href="css/main.css" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <link rel="icon" href="./icons/icon-192.png" type="image/png">
+</head>
+<body>
+
+  <header class="app-header">
+    <button class="burger" id="burgerBtn">☰</button>
+    <span class="header-title">📊 Статистика</span>
+  </header>
+
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <span class="app-title">🃏 Мафия</span>
+      <button class="sidebar-close" id="sidebarClose">✕</button>
+    </div>
+    <ul class="nav-list">
+      <li><a href="index.html"    class="nav-link">👥 Игроки</a></li>
+      <li><a href="game.html"     class="nav-link">🎮 Игра</a></li>
+      <li><a href="results.html"  class="nav-link">🏆 Результаты</a></li>
+      <li><a href="stats.html"    class="nav-link active">📊 Статистика</a></li>
+      <li><a href="settings.html" class="nav-link">⚙️ Настройки</a></li>
+    </ul>
+    <div class="sidebar-footer">
+      <span class="text-muted" style="font-size:12px;">v1.0.0</span>
+    </div>
+  </nav>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <main class="main-content">
+
+    <!-- ── Табы: Игроки / История ── -->
+    <div class="card stats-filter-card">
+      <div class="results-tabs-nav" id="statsTabsNav">
+        <button class="results-tab-btn active" data-tab="players">
+          👤 Игроки
+        </button>
+        <button class="results-tab-btn" data-tab="history">
+          📅 История вечеров
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Поиск игрока ── -->
+    <div class="card stats-search-card" id="statsSearchCard">
+      <input
+        type="text"
+        id="statsSearch"
+        class="stats-search-input"
+        placeholder="🔍 Поиск игрока..."
+      />
+    </div>
+
+    <!-- ── Тело ── -->
+    <div id="statsBody"></div>
+
+  </main>
+
+  <!-- Нижняя навигация -->
+  <nav class="bottom-nav">
+    <a href="index.html"   class="bottom-nav-btn">
+      <span class="nav-icon">👥</span><span>Игроки</span>
+    </a>
+    <a href="game.html"    class="bottom-nav-btn">
+      <span class="nav-icon">🎮</span><span>Игра</span>
+    </a>
+    <a href="results.html" class="bottom-nav-btn">
+      <span class="nav-icon">🏆</span><span>Итоги</span>
+    </a>
+    <a href="stats.html"   class="bottom-nav-btn active">
+      <span class="nav-icon">📊</span><span>Статистика</span>
+    </a>
+  </nav>
+
+  <!-- Модалка детальной статистики игрока -->
+  <div id="playerStatsModal" class="modal-overlay">
+    <div class="modal-box modal-box--wide">
+      <div class="modal-header">
+        <span id="playerStatsName" class="modal-title"></span>
+        <button class="modal-close-btn" id="playerStatsClose">✕</button>
+      </div>
+      <div id="playerStatsBody" class="player-stats-body"></div>
+    </div>
+  </div>
+
+  <script src="js/pages/stats.js"></script>
+  <script src="js/ui/sidebar.js"></script>
+
+</body>
+</html>

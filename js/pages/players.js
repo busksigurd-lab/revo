@@ -245,17 +245,66 @@ function saveToFile() {
   URL.revokeObjectURL(url);
 }
 
-// ── Сохранить вечер в localStorage ────────────────────────
 function saveEvening() {
-  const title = document.getElementById('eveningTitle').value.trim();
+  const title = document.getElementById('eveningTitle').value.trim()
+             || 'Игровой вечер';
+  const date  = document.getElementById('eveningDate').textContent.trim();
   const names = getAllNames();
+
+  if (!names.length) {
+    showToast('Добавьте игроков!', 'error');
+    return;
+  }
 
   localStorage.setItem('players', JSON.stringify(names));
   localStorage.setItem('evening', JSON.stringify({
     title,
     gameCount,
     seatings,
-    date: document.getElementById('eveningDate').textContent
+    date,
+  }));
+
+  // ── Загружаем существующие результаты чтобы НЕ перетереть ──
+  const existingResults = JSON.parse(
+    localStorage.getItem('eveningResults') || 'null'
+  );
+
+  // Формируем игры — только те, которых ещё НЕТ в existingResults
+  const games = existingResults?.games || {};
+
+  for (let i = 1; i <= gameCount; i++) {
+    // ✅ Если игра уже сохранена (finished) — не трогаем её!
+    if (games[i]?.finished) continue;
+
+    // ✅ ИСПРАВЛЕНО: seatings[i], а не seatings[i-1]
+    const seating = seatings[i]
+      ? [...seatings[i]]
+      : getFilledNames();
+
+    games[i] = {
+      gameNum:  i,
+      winner:   null,
+      finished: false,
+      seating,
+      players: seating.map((name, idx) => ({
+        seat:  idx + 1,
+        name,
+        role:  '',
+        team:  '',
+        won:   null,
+        base:  0,
+        extra: 0,
+        total: 0,
+        fouls: 0,
+      })),
+    };
+  }
+
+  localStorage.setItem('eveningResults', JSON.stringify({
+    title,
+    date,
+    games,
+    createdAt: existingResults?.createdAt || Date.now(),
   }));
 
   showToast('Вечер сохранён ✅', 'success');
@@ -286,14 +335,12 @@ function parseNames(text) {
     .split('\n')
     .map(line => line
       // Убираем нумерацию в любом формате:
-      // 1. 1) 1: №1 #1 — в начале строки
-      .replace(/^\s*[№#]?\d+\s*[.):>\-–—]\s*/, '')
+      // "1. " "1) " "1: " "№1 " "#1 " "1 " — в начале строки
+      .replace(/^\s*[№#]?\d+\s*[.):>\-–—]?\s*/, '')  // ← добавили ? после [...] — символ теперь необязателен
       // Убираем маркеры списков: - • – — * в начале
       .replace(/^\s*[-•–—*]\s*/, '')
-      // Убираем лишние пробелы
       .trim()
     )
-    // Отсеиваем пустые строки и слишком длинные
     .filter(line => line.length > 0 && line.length < 60);
 }
 
@@ -409,8 +456,24 @@ function bindEvents() {
   document.getElementById('btnSaveFile')
     .addEventListener('click', saveToFile);
 
-  document.getElementById('btnSaveEvening')
-    .addEventListener('click', saveEvening);
+  document.getElementById('btnSaveEvening')?.addEventListener('click', () => {
+
+  // ❌ Удалить эти две строки:
+  // gameCount = 4;
+  // updateCounterUI();
+
+  // Удаляем результаты и состояние игры
+  localStorage.removeItem('eveningResults');
+  localStorage.removeItem('gameState');
+  localStorage.removeItem('evening');
+
+  // Очищаем список игроков на экране
+  clearAllSlots();
+  seatings = [];
+  document.getElementById('tabsWrapper').hidden = true;
+
+  showToast('Новый вечер начат ✅', 'success');
+});
 
   document.getElementById('btnStartEvening')
     .addEventListener('click', () => {
