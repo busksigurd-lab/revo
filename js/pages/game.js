@@ -605,6 +605,8 @@ function handleDayListClick(e) {
   const action = btn.dataset.action;
   const p      = dayState.players[idx];
 
+  if (!p) return;  // ← ДОБАВЬ защиту
+
   if (action === 'foul-inc') {
     if (p.fouls >= 3) {
       openConfirm(
@@ -616,6 +618,7 @@ function handleDayListClick(e) {
     p.fouls++;
     if (p.fouls === 3) p.skipNext = true;
     renderDayList();
+    renderFinishList();   // ← ДОБАВЬ
     return;
   }
 
@@ -623,32 +626,25 @@ function handleDayListClick(e) {
     p.fouls--;
     if (p.fouls < 3) p.skipNext = false;
     renderDayList();
+    renderFinishList();   // ← ДОБАВЬ
     return;
   }
 
   if (action === 'extra-inc') {
-  p.extra = Math.round((p.extra + getExtraStep()) * 1000) / 1000;
-  renderDayList();
-  return;
+    p.extra = Math.round((p.extra + getExtraStep()) * 1000) / 1000;
+    renderDayList();
+    renderFinishList();   // ← ДОБАВЬ
+    return;
   }
   if (action === 'extra-dec') {
-  p.extra = Math.round((p.extra - getExtraStep()) * 1000) / 1000;
-  renderDayList();
-  return;
+    p.extra = Math.round((p.extra - getExtraStep()) * 1000) / 1000;
+    renderDayList();
+    renderFinishList();   // ← ДОБАВЬ
+    return;
   }
 
   if (action === 'eliminate') {
-    if (p.alive) {
-      openConfirm(
-        `Убрать игрока #${p.seat} ${p.name} из игры?`,
-        () => eliminatePlayer(idx, 'manual')
-      );
-    } else {
-      openConfirm(
-        `Вернуть игрока #${p.seat} ${p.name} в игру?`,
-        () => revivePlayer(idx)
-      );
-    }
+    // ... остаётся без изменений
   }
 }
 
@@ -727,13 +723,10 @@ function startSpeechTimer() {
 function nextSpeaker() {
   const players = dayState.players;
   const alive   = players.filter(p => p.alive);
-
   if (alive.length === 0) return;
 
   // ── Если стартовый только что закончил своё ПОСЛЕДНЕЕ слово (день 0) ──
   if (dayState.round === 0 && dayState.lastSpeech) {
-    // Таймер уже идёт — это была его вторая речь, она завершилась
-    // Следующий клик "Далее" должен завершить день
     dayState.lastSpeech   = false;
     dayState.currentIdx   = -1;
     clearInterval(dayState.timerInterval);
@@ -748,11 +741,6 @@ function nextSpeaker() {
 
   // ── Первый вызов — стартуем с startSeatIdx ──
   if (dayState.currentIdx === -1) {
-    if (dayState.startSeatIdx === -1) {
-      dayState.startSeatIdx = players.findIndex(p => p.alive);
-    }
-    if (dayState.startSeatIdx === -1) return;
-
     dayState.currentIdx = dayState.startSeatIdx;
     startSpeechTimer();
     renderDayList();
@@ -760,8 +748,8 @@ function nextSpeaker() {
     return;
   }
 
-  const startPlayer = players[dayState.startSeatIdx];
   const total       = players.length;
+  const startPlayer = players[dayState.startSeatIdx];
 
   // ── Ищем следующего живого ──
   let nextIdx = -1;
@@ -772,28 +760,61 @@ function nextSpeaker() {
       break;
     }
   }
-
   if (nextIdx === -1) return;
 
   const nextPlayer = players[nextIdx];
 
-  // ── Круг завершён ──
-  if (nextPlayer.seat === startPlayer.seat) {
+  // ── Проверяем завершение круга ──
+  // День 0: круг заканчивается когда следующий — стартовый (если жив)
+  //         ИЛИ когда nextIdx "перешагнул" обратно через стартовую позицию
+  //         (стартовый удалён — круг заканчивается на предыдущем игроке)
 
-    // ДЕНЬ 0: стартовый говорит последним → ставим флаг и даём речь
+  let circleComplete = false;
+
+  if (startPlayer.alive) {
+    // Стартовый жив — ждём когда следующий снова станет стартовым
+    circleComplete = (nextPlayer.seat === startPlayer.seat);
+  } else {
+    // Стартовый удалён — круг заканчивается когда nextIdx
+    // "перепрыгнул" назад через начало (замкнулся)
+    // То есть следующий индекс МЕНЬШЕ текущего — значит прошли круг
+    circleComplete = (nextIdx < dayState.currentIdx)
+      || (nextIdx === dayState.startSeatIdx);
+  }
+
+  if (circleComplete) {
+
     if (dayState.round === 0) {
-      dayState.lastSpeech = true;      // следующий клик → завершение
-      dayState.currentIdx = nextIdx;
-      startSpeechTimer();
-      renderDayList();
-      renderNominationRow();
-      return;
+      if (startPlayer.alive) {
+        // Стартовый жив — даём ему последнее слово
+        dayState.lastSpeech = true;
+        dayState.currentIdx = nextIdx;
+        startSpeechTimer();
+        renderDayList();
+        renderNominationRow();
+        return;
+      } else {
+        // Стартовый удалён — завершаем день без его речи
+        dayState.currentIdx   = -1;
+        clearInterval(dayState.timerInterval);
+        dayState.timerRunning = false;
+        document.getElementById('dayTimerLabel').textContent = '— — —';
+        document.getElementById('btnSpeech').textContent     = '▶ Речь';
+        renderDayList();
+        renderNominationRow();
+        openSleepModal();
+        return;
+      }
     }
 
-    // ДЕНЬ 1+: завершаем круг
+    // День 1+: завершаем круг
     dayState.currentIdx   = -1;
     clearInterval(dayState.timerInterval);
     dayState.timerRunning = false;
+    document.getElementById('dayTimerLabel').textContent = '— — —';
+    document.getElementById('btnSpeech').textContent     = '▶ Речь';
+    renderDayList();
+    renderNominationRow();
 
     if (dayState.eliminatedThisDay) {
       openSleepModal();
@@ -1147,14 +1168,14 @@ function renderNightList() {
     const roleClass = roleKey ? `role-tag--${roleKey}` : '';
 
     li.innerHTML = `
-      <span class="night-seat-num">${p.seat}</span>
-      <span class="night-seat-name">${p.name}</span>
-      <div class="night-role-slot">
-        ${roleClass
-          ? `<span class="role-tag ${roleClass}">${p.role}</span>`
-          : ''}
-      </div>
-    `;
+  <span class="night-seat-num">${p.seat}</span>
+  <span class="night-seat-name">${p.name}</span>
+  <div class="night-role-slot">
+    ${p.role
+      ? `<span class="role-tag role-tag--neutral">${p.role}</span>`
+      : ''}
+  </div>
+ `;
 
     // Flash — добавляем ПОСЛЕ innerHTML, чтобы не потерять listener
     const flashClass = nightState.flashMap[p.seat];
@@ -2386,6 +2407,7 @@ function renderFinishList() {
   if (!ul) return;
   ul.innerHTML = '';
 
+  // ── ВАЖНО: всегда используем dayState.players для idx ──
   const players = dayState.players.length
     ? dayState.players
     : GameState.currentSeating.map((name, i) => ({
@@ -2396,8 +2418,10 @@ function renderFinishList() {
 
   const alive = players.filter(p => p.alive);
   const dead  = players.filter(p => !p.alive);
+
   [...alive, ...dead].forEach(p => {
-    const idx = players.indexOf(p);
+    // ── ИСПРАВЛЕНО: idx всегда от dayState.players ──
+    const idx = dayState.players.indexOf(p);  // ← было players.indexOf(p)
     const roleClass = roleTagClass(p.role);
 
     const li = document.createElement('li');
