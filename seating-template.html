@@ -41,6 +41,7 @@
       z-index: 1;
     }
 
+    /* ══ Общий layout ══ */
     #card-content {
       position: absolute;
       inset: 0;
@@ -109,31 +110,30 @@
     }
 
     /* ══ ЦЕНТРАЛЬНАЯ ЗОНА ══ */
-    .center-zone {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      padding: 50px 80px 0;
-    }
+   .center-zone {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding: 50px 80px 0;     /* было padding: 0 80px → добавил 50px сверху */
+}
 
     #tplPlayersList {
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-      gap: 11px;
-    }
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;          /* было 12px → 12 × 0.9 = 10.8 ≈ 11px */
+}
 
-    /* ── Строка игрока — без подложки ── */
-    .player-row {
-      display: flex;
-      align-items: center;
-      gap: 26px;
-      padding: 16px 34px;
-      background: transparent;
-      border: none;
-      border-radius: 10px;
-      backdrop-filter: none;
-    }
+.player-row {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  padding: 16px 34px;
+  background: transparent;           /* было rgba(0,0,0,0.40) */
+  border: none;                      /* было 1px solid rgba(232,184,75,0.18) */
+  border-radius: 10px;
+  backdrop-filter: none;             /* было blur(4px) */
+}
 
     .player-num {
       width: 52px;
@@ -158,15 +158,15 @@
     }
 
     .player-name {
-      font-family: 'Montserrat', sans-serif;
-      font-size: 37px;
-      font-weight: 700;
-      color: #f0f0f0;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      flex: 1;
-      text-shadow: 0 1px 8px rgba(0,0,0,0.6);
-    }
+  font-family: 'Montserrat', sans-serif;
+  font-size: 37px;          /* было 44px → 44 × 0.85 = 37.4 ≈ 37px */
+  font-weight: 700;
+  color: #f0f0f0;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  flex: 1;
+  text-shadow: 0 1px 8px rgba(0,0,0,0.6);
+}
 
     /* ══ ПОДВАЛ ══ */
     .footer-zone {
@@ -205,7 +205,7 @@
 
     <div class="divider"></div>
 
-    <!-- СПИСОК -->
+    <!-- СПИСОК — центрируется вертикально -->
     <div class="center-zone">
       <div id="tplPlayersList">
 

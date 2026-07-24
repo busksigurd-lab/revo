@@ -11,24 +11,28 @@
   <!-- ═══════════════════════════════════════════════════
        ЕДИНЫЙ КОМПОНЕНТ — МЕНЮ ИГРЫ
   ════════════════════════════════════════════════════ -->
-  <div class="game-menu-wrap" id="gameMenuComponent" style="display:none">
+  <div id="gameMenuComponent">
+
+  <button class="btn-roles-toggle" id="btnToggleRolesGlobal">
+    <span class="eye-icon">🙈</span>
+    <span class="eye-label">Роли скрыты</span>
+  </button>
+
+  <div class="game-menu-wrap">
     <button class="game-number-badge game-number-badge--btn" id="btnGameMenu">
       <span class="game-number-badge__label">Игра №</span>
       <span class="game-number-badge__value" id="gameNumberDisplay">1</span>
       <span class="game-menu-arrow">▾</span>
     </button>
+
     <div class="game-dropdown" id="gameDropdown">
-      <button class="game-dropdown__item" id="ddFinish">
-        🏁 Завершить игру
-      </button>
-      <button class="game-dropdown__item" id="ddRestart">
-        🔄 Перезапустить игру
-      </button>
-      <button class="game-dropdown__item game-dropdown__item--danger" id="ddKick">
-        ✕ Удалить игрока
-      </button>
+      <button class="game-dropdown__item" id="ddFinish">🏁 Завершить игру</button>
+      <button class="game-dropdown__item" id="ddRestart">🔄 Перезапустить игру</button>
+      <button class="game-dropdown__item game-dropdown__item--danger" id="ddKick">✕ Удалить игрока</button>
     </div>
   </div>
+
+</div>
 
 
 
@@ -54,13 +58,18 @@
     </div>
 
     <div class="seating-actions">
-      <button class="btn btn-secondary" id="btnApplySeating" disabled>
-        🔀 Применить рассадку
-      </button>
-      <button class="btn btn-primary" id="btnStartGame">
-        🎲 СТАРТ
-      </button>
-    </div>
+     <div class="seating-choice">
+      <button class="btn btn-seating-choice" id="btnApplySeating" disabled>
+      🔀 Случайная рассадка
+    </button>
+    <button class="btn btn-seating-choice btn-seating-active" id="btnBaseSeating">
+      📋 Стартовый состав
+    </button>
+  </div>
+  <button class="btn" id="btnStartGame">
+    🎲 СТАРТ
+  </button>
+</div>
 
   </div>
 
@@ -152,31 +161,26 @@
       <ul id="dayList" class="day-list"></ul>
     </div>
 
-    <!-- Кнопка видимости ролей -->
-    <div class="roles-toggle-bar">
-      <button class="btn-roles-toggle" id="btnToggleRoles" title="Показать/скрыть роли">
-        <span class="eye-icon">🙈</span>
-        <span class="eye-label">Роли скрыты</span>
-      </button>
-    </div>
-
     <!-- Таймер речи -->
-    <div class="speech-timer-wrap">
-      <div class="speech-timer-row">
-        <div class="speech-timer-block">
-          <span id="dayTimer" class="day-timer">0:45</span>
-          <span id="dayTimerLabel" class="day-timer-label">— — —</span>
-        </div>
-        <button class="btn btn-primary speech-btn" id="btnSpeech">
-          ▶ Речь
-        </button>
-      </div>
+<div class="speech-timer-wrap">
+  <div class="speech-timer-row">
+    <div class="speech-timer-block">
+      <span id="dayTimer" class="day-timer">0:45</span>
+      
     </div>
 
-    <!-- Числовой ряд игроков -->
-    <div class="nomination-wrap">
+    <!-- Панель последнего слова — в центре таймер-строки -->
+    <div id="dayLastWordBar" class="day-lw-bar"></div>
+
+    <button class="btn btn-primary speech-btn" id="btnSpeech">
+      ▶ Речь
+    </button>
+  </div>
+</div>
+
+<!-- Числовой ряд игроков -->
+<div class="nomination-wrap">
   <div id="nominationRow" class="nomination-row"></div>
-  
 </div>
 
   </div>
@@ -199,28 +203,18 @@
     <ul id="voteList" class="day-list"></ul>
   </div>
 
-  <div class="roles-toggle-bar">
-    <button class="btn-roles-toggle" id="btnVoteToggleRoles">
-      <span class="eye-icon">🙈</span>
-      <span class="eye-label">Роли скрыты</span>
-    </button>
-  </div>
-
-    <div class="vote-big-num-wrap">
-    <div class="vote-big-num-row">
-      <div id="voteBigNum" class="vote-big-num">—</div>
-      <div id="voteTimerWrap" style="display:none;">
-      <div id="voteTimerInline">
-        <span id="voteTimer">0:45</span>
-        <span id="voteTimerLabel"></span>
-      </div>
+    <!-- после roles-toggle-bar -->
+<div class="vote-big-num-wrap">
+  <div id="candidatesStrip" class="candidates-strip"></div>
+  <div id="voteTimerWrap" style="display:none;">
+    <div id="voteTimerInline">
+      <span id="voteTimer">0:45</span>
+      <span id="voteTimerLabel"></span>
     </div>
-
   </div>
-  <div id="voteBigName" class="vote-big-name"></div>
 </div>
 
-  <div class="vote-num-wrap">
+<div class="vote-num-wrap">
   <div class="vote-num-row-outer">
     <div id="voteNumRow" class="vote-num-row"></div>
     <button id="btnVoteCancel" class="vote-num-btn vote-cancel-btn" disabled>✕</button>

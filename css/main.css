@@ -70,9 +70,14 @@ body {
 
 #gameMenuComponent {
   position: fixed;
-  top: 12px;
+  top: 8px;
   right: 12px;
   z-index: 999;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
 }
 
 /* ============================================================
@@ -303,6 +308,77 @@ body {
 }
 .extra-slots summary:hover { color: var(--text); }
 .extra-slots .player-list  { margin-top: 8px; }
+
+/* ── Счётчик активных в заголовке ── */
+.active-counter {
+  display: flex;
+  align-items: center;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* ── Drag handle ── */
+.drag-handle-players {
+  font-size: 18px;
+  color: var(--text-muted);
+  cursor: grab;
+  flex-shrink: 0;
+  padding: 0 4px;
+  user-select: none;
+  line-height: 1;
+}
+.drag-handle-players:active { cursor: grabbing; }
+
+/* ── Резервный игрок ── */
+.player-reserve {
+  opacity: 0.45;
+}
+.player-reserve .player-input {
+  color: var(--text-muted);
+}
+
+/* ── Черта резерва ── */
+.reserve-divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.reserve-divider::before,
+.reserve-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ── Drag-and-drop стили ── */
+.player-slot.dragging {
+  opacity: 0.3;
+  border: 1px dashed var(--accent);
+}
+
+.player-slot.drag-swap-target {
+  background: rgba(232, 184, 75, 0.12);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  box-shadow: 0 0 0 2px rgba(232, 184, 75, 0.3);
+}
+
+.player-slot.drag-insert-before {
+  box-shadow: 0 -2px 0 0 var(--accent);
+}
+
+.player-slot.drag-insert-after {
+  box-shadow: 0 2px 0 0 var(--accent);
+}
 
 /* ============================================================
    РАССАДКИ
@@ -674,6 +750,7 @@ input::placeholder { color: var(--text-muted); }
 .seating-actions {
   display: flex;
   flex-direction: row;
+  align-items: stretch;
   gap: 8px;
   padding: 10px 12px;
   border-top: 1px solid var(--border);
@@ -880,6 +957,23 @@ input::placeholder { color: var(--text-muted); }
 
 .game-phase-label {
   display: none;
+}
+
+/* Экран раздачи — скрыто по умолчанию через CSS */
+.roles-phase-tag {
+  visibility: hidden;
+}
+.roles-visible .roles-phase-tag {
+  visibility: visible;
+}
+.role-just-assigned .roles-phase-tag {
+  visibility: visible;
+}
+
+/* День/ночь/голосование/финиш — скрыто по умолчанию через JS */
+.day-role-tag,
+.night-role-slot .role-tag {
+  visibility: hidden;
 }
 
 /* ============================================================
@@ -1187,15 +1281,6 @@ input::placeholder { color: var(--text-muted); }
   background: rgba(232,184,75,0.1);
 }
 
-/* ── Кнопка глазик ── */
-.roles-toggle-bar {
-  flex-shrink: 0;
-  display: flex;
-  justify-content: center;
-  padding: 4px 12px;
-  background: var(--bg);
-  border-top: 1px solid var(--border);
-}
 
 .btn-roles-toggle {
   background: var(--bg-card);
@@ -1253,11 +1338,6 @@ input::placeholder { color: var(--text-muted); }
 .day-timer.timer-warn { color: #f97316; }
 .day-timer.timer-done { color: var(--danger); }
 
-.day-timer-label {
-  font-size: 13px;
-  color: var(--text-muted);
-  white-space: nowrap;
-}
 
 .speech-btn {
   flex-shrink: 0;
@@ -1542,8 +1622,20 @@ input::placeholder { color: var(--text-muted); }
 }
 
 .night-player-item.night-selected {
-  border-color: var(--accent);
-  background: rgba(232, 184, 75, 0.1);
+  border-color: rgba(180, 180, 180, 0.6);
+  background: rgba(180, 180, 180, 0.08);
+}
+
+/* Красный важнее серого */
+.night-player-item.night-selected.night-killed {
+  border-color: var(--danger) !important;
+  background: rgba(180, 50, 50, 0.25) !important;
+}
+
+/* Зелёный важнее серого */
+.night-player-item.night-selected.night-green {
+  border-color: #4caf50 !important;
+  background: rgba(76, 175, 80, 0.15) !important;
 }
 
 /* 2. ТРОЙНОЕ мигание вспышек */
@@ -1665,6 +1757,18 @@ input::placeholder { color: var(--text-muted); }
   background: rgba(231, 76, 60, 0.15);
 }
 
+/* Текущий актор (не мафия) — золотая рамка */
+.night-player-item.night-acting {
+  border-color: var(--accent);
+  background: rgba(232, 184, 75, 0.12);
+}
+
+/* Если актор одновременно убит — золотой перекрывает красный */
+.night-player-item.night-acting.night-killed {
+  border-color: var(--accent) !important;
+  background: rgba(232, 184, 75, 0.12) !important;
+}
+
 /* ══════════════════════════════════════════
    ФАЗА ГОЛОСОВАНИЯ
 ══════════════════════════════════════════ */
@@ -1725,14 +1829,6 @@ input::placeholder { color: var(--text-muted); }
   font-weight: 600;
   color: var(--text-muted, #888);
   letter-spacing: 0.5px;
-}
-
-/* Числовой ряд — идентичен ночному */
-.vote-num-wrap {
-  flex-shrink: 0;
-  padding: 8px 10px 10px;
-  background: var(--bg-card);
-  border-top: 1px solid var(--border);
 }
 
 .vote-num-row {
@@ -2149,4 +2245,312 @@ input::placeholder { color: var(--text-muted); }
   z-index: 1;
 }
 .ptd-role  { min-width: 34px; }
-.ptd-day   { min-width: 20
+.ptd-day   { min-width: 20px; max-width: 26px; background: #111a12; text-align: center;
+  vertical-align: middle;}
+.ptd-night { min-width: 20px; max-width: 26px; background: #11121a; }
+
+/* ── Протокол: состояния ячеек ── */
+
+/* Живой — светлее базы */
+.ptd-night.pcc-alive { background: #2d2d2f !important; }
+.ptd-day.pcc-alive   { background: #2d2d2f !important; }
+
+/* Убит именно сейчас — тёмно-красная */
+.ptd-night.pcc-killed { background: #710d0d !important; }
+.ptd-day.pcc-killed   { background: #710d0d !important; }
+
+/* Уже мёртв — просто тёмная, почти чёрная */
+.ptd-night.pcc-gone { background: #0d0d0f !important; }
+.ptd-day.pcc-gone   { background: #0d0e0d !important; }
+
+/* Спасён доктором / красоткой — тёмно-зелёная */
+.ptd-night.pcc-saved { background: #0d4f22 !important; }
+
+/* Удачная проверка — тёмно-золотая */
+.ptd-night.pcc-gold  { background: #2d2d2f !important; }
+
+/* Строка мёртвого — приглушить имя и номер */
+.prow-dead .ptd-num,
+.prow-dead .ptd-name { opacity: 0.8; }
+
+/* ════════════════════════════════════════════════════════════
+   КНОПКИ РАССАДКИ — GAME.HTML
+════════════════════════════════════════════════════════════ */
+
+.seating-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.btn-seating-choice {
+  flex: 1;
+  padding: 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  background: var(--bg-input);
+  color: var(--text-muted);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+
+.btn-seating-choice:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn-seating-choice.btn-seating-active {
+  background: rgba(232, 184, 75, 0.15);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.btn-seating-choice:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+#btnStartGame {
+  flex: 1;
+  background: var(--success) !important;
+  color: #000 !important;
+  font-size: 15px;
+  font-weight: 800;
+  border: none;
+  border-radius: var(--radius);
+  align-self: stretch;
+}
+
+#btnStartGame:hover {
+  filter: brightness(1.15);
+}
+
+.vote-num-wrap {
+  padding: 8px 0 16px;
+}
+
+.candidates-strip {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 24px;
+  padding: 12px 8px 8px;
+  width: 100%;
+  min-height: 80px;
+}
+
+.cand-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  opacity: 0.3;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.cand-card.active {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.cand-card.done {
+  opacity: 0.15;
+}
+
+.cand-num {
+  font-size: 2.8rem;
+  font-weight: 900;
+  color: #f0c040;
+  line-height: 1;
+}
+
+.cand-card.active .cand-num {
+  color: #ffe066;
+  text-shadow: 0 0 16px rgba(255, 220, 80, 0.65);
+}
+
+.cand-name {
+  font-size: 0.78rem;
+  color: #aaa;
+  text-align: center;
+  max-width: 70px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cand-card.active .cand-name {
+  color: #fff;
+}
+
+/* Панель последнего слова */
+.day-lw-bar {
+  display: none;
+  flex: 1;                    /* занимает центр между таймером и кнопкой */
+  justify-content: center;
+  align-items: flex-end;
+  gap: 32px;
+  padding: 0 16px;
+}
+
+/* Карточка одного убитого */
+.lw-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  opacity: 0.35;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+/* Активный говорящий */
+.lw-card.lw-active {
+  opacity: 1;
+  transform: scale(1.08);
+}
+
+/* Номер — крупный как в голосовании */
+.lw-card .lw-num {
+  font-size: 2.6rem;
+  font-weight: 900;
+  color: #e53935;
+  line-height: 1;
+}
+
+.lw-card.lw-active .lw-num {
+  color: #ff1744;
+  text-shadow: 0 0 16px rgba(255, 23, 68, 0.65);
+}
+
+/* Ник под номером */
+.lw-card .lw-name {
+  font-size: 0.72rem;
+  color: #aaa;
+  max-width: 72px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lw-card.lw-active .lw-name {
+  color: #fff;
+}
+
+/* ════════════════════════════════════════════════════════════
+   ПРОТОКОЛ — ЦВЕТА ЯЧЕЕК
+════════════════════════════════════════════════════════════ */
+
+/* Строка мафии — специальный фон */
+.pcc-mafia {
+  background: #3d1515 !important;
+  color: #888;
+}
+
+/* Выбыл с голосования — СИНИЙ */
+.pcc-voted {
+  background: rgba(40, 90, 169, 0.55) !important;
+  color: #fff !important;
+}
+
+/* Финиш — мёртвые игроки приглушены, но допы работают */
+.finish-dead {
+  opacity: 0.45;
+  background: var(--bg);
+  border-color: transparent;
+}
+
+/* Допы у мёртвых в финише — кликабельны! */
+.finish-dead .extra-btn {
+  pointer-events: auto;
+}
+
+/* Фолов в финише нет — скрываем */
+.finish-item .foul-cell {
+  display: none;
+}
+
+.proto-row-mafia .ptd-mafia {
+  background: #3d1515;
+}
+
+/* ── Протокол: выставление на голосование ── */
+
+/* Просто выставил — БЕЗ фона, только цифра будет цветной */
+
+/* Контрастнее — если выставленный был выголосован */
+.proto-nom-civil-vs-black.proto-nom-voted { color: #5bc8ff; font-weight: 900; }
+.proto-nom-civil-vs-civil.proto-nom-voted { color: #ff7fc0; font-weight: 900; }
+.proto-nom-black-vs-civil.proto-nom-voted { color: #b57fff; font-weight: 900; }
+
+.ptd-day.pcc-voted-num {
+  background: #710d0d !important;
+}
+
+.proto-nom-civil-vs-black { color: #5bc8ff; font-weight: 700; }
+.proto-nom-civil-vs-civil { color: #ff7fc0; font-weight: 700; }
+.proto-nom-black-vs-civil { color: #aaaaaa; font-weight: 700; }
+.proto-nom-voted          { text-decoration: underline; }
+
+/* Мирный выставил чёрного, и тот выбыл — слабый синий фон */
+.ptd-day.pcc-nom-hit-black {
+  background: rgba(60, 140, 255, 0.13) !important;
+}
+
+/* Мирный выставил мирного, и тот выбыл — слабый розовый фон */
+.ptd-day.pcc-nom-hit-civil {
+  background: rgba(220, 80, 120, 0.11) !important;
+}
+
+/* ============================================================
+   ГРУППА КНОПОК РАССАДКИ
+   ============================================================ */
+.seating-btn-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.seating-btn-group .btn {
+  width: 100%;
+}
+
+.results-action-bar {
+  display: flex;
+  gap: 12px;
+  padding: 16px 0;
+  flex-wrap: wrap;
+}
+
+.results-action-bar .btn {
+  flex: 1;
+  min-width: 200px;
+}
+
+.results-action-bar .btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-telegram {
+  background: linear-gradient(135deg, #229ED9 0%, #1a7fb5 100%);
+  color: #fff;
+  border: none;
+}
+.btn-telegram:hover:not(:disabled) {
+  background: linear-gradient(135deg, #2bb5f5 0%, #229ED9 100%);
+}
+.btn-telegram:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

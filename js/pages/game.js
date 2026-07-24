@@ -24,12 +24,12 @@ const GameState = {
   phase:          'seating',
   roles:          [],
   currentSeatIdx: 0,
+  
+  // ── ДОБАВЬ: запоминаем seat (номер места) стартового игрока каждого дня ──
+  dayStartSeats:  {},  // { 0: 1, 1: 2, 2: 4, ... }  ключ=день, значение=seat
 
-  // ── Протокол игры ──────────────────────────────────
   protocol: {
-    // Ночные ходы: { 1: { mafia: 5, don: 3, sheriff: '-', ... }, 2: {...} }
     nights:     {},
-    // Дневные действия игроков: { seat: { 'd0': 'v', 'd1': 'x', ... } }
     dayActions: {},
   },
 };
@@ -77,7 +77,13 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('kickModal').classList.remove('open');
   });
 
-}); // ← единственная закрывающая скобка
+ // 👇 ДОБАВЬ В КОНЕЦ DOMContentLoaded
+  document.getElementById('btnToggleRolesGlobal')
+    .addEventListener('click', () => {
+      rolesVisible = !rolesVisible;
+      applyRolesVisibility();
+    });
+});
 
 // ════════════════════════════════════════════════════════════
 //  ЗАГРУЗКА ДАННЫХ
@@ -90,22 +96,27 @@ function loadEveningData() {
   if (!evening) { window.location.href = 'index.html'; return; }
 
   GameState.evening = evening;
-  GameState.players = players.filter(Boolean);
+
+  // Активные игроки — первые activeCount из evening.players
+  const activeCount = evening.activeCount ?? 10;
+  const activePlayers = (evening.players || [])
+    .slice(0, activeCount)
+    .map(p => typeof p === 'string' ? p : p.name)
+    .filter(Boolean);
+
+  GameState.players = activePlayers;
 
   const saved = JSON.parse(localStorage.getItem('gameState') || 'null');
   if (saved?.currentGameNum) GameState.currentGameNum = saved.currentGameNum;
 
-  // ✅ ИСПРАВЛЕНО: сначала проверяем рассадку вечера для текущей игры,
-  // если нет — берём базовый список игроков
   const seatingFromEvening = evening.seatings?.[GameState.currentGameNum];
-  
+
   if (saved?.currentSeating?.length) {
     GameState.currentSeating = saved.currentSeating;
   } else if (seatingFromEvening?.length) {
     GameState.currentSeating = [...seatingFromEvening];
   } else {
-    // ✅ Базовый список с главного экрана
-    GameState.currentSeating = [...GameState.players];
+    GameState.currentSeating = [...activePlayers];
   }
 }
 
@@ -121,8 +132,12 @@ function renderSeatingPhase() {
 
   const hasSeating = ev.seatings?.[GameState.currentGameNum];
   const btnApply   = document.getElementById('btnApplySeating');
+  const btnBase    = document.getElementById('btnBaseSeating');
+    
   btnApply.disabled = !hasSeating;
-  if (hasSeating) btnApply.textContent = `🔀 Применить рассадку №${GameState.currentGameNum}`;
+
+  // По умолчанию активна кнопка "Стартовый состав"
+  setSeatingChoice('base');
 
   renderSeatingList();
 }
@@ -208,28 +223,59 @@ function applyGeneratedSeating() {
 //  ПРИВЯЗКА СОБЫТИЙ РАССАДКИ
 // ════════════════════════════════════════════════════════════
 
+function setSeatingChoice(choice) {
+  const btnApply = document.getElementById('btnApplySeating');
+  const btnBase  = document.getElementById('btnBaseSeating');
+
+  btnApply?.classList.toggle('btn-seating-active', choice === 'random');
+  btnBase?.classList.toggle('btn-seating-active',  choice === 'base');
+}
+
 function bindSeatingEvents() {
-  // ✅ ДОБАВИТЬ — кнопка "Назад" → возврат на главную
   document.getElementById('btnBackToPlayers')
     ?.addEventListener('click', () => {
       window.location.href = 'index.html';
     });
 
   document.getElementById('btnApplySeating')
-    ?.addEventListener('click', applyGeneratedSeating);
+    ?.addEventListener('click', () => {
+      applyGeneratedSeating();
+      setSeatingChoice('random');
+    });
+
+  document.getElementById('btnBaseSeating')
+    ?.addEventListener('click', () => {
+      const evening = JSON.parse(localStorage.getItem('evening') || 'null');
+      const activeCount = evening?.activeCount ?? 10;
+
+      const activePlayers = (evening?.players || [])
+        .slice(0, activeCount)
+        .map(p => typeof p === 'string' ? p : p.name)
+        .filter(Boolean);
+
+      if (!activePlayers.length) {
+        showToast('Нет активных игроков', 'error');
+        return;
+      }
+
+      GameState.currentSeating = [...activePlayers];
+      GameState.players        = [...activePlayers];
+      renderSeatingList();
+      setSeatingChoice('base');
+      showToast(`Стартовый состав применён (${activePlayers.length} игроков) ✅`);
+    });
 
   document.getElementById('btnStartGame')
     ?.addEventListener('click', () => {
       if (GameState.currentSeating.length === 0) {
-        showToast('Нет игроков в рассадке', 'error');
+        showToast('Нет игроков в рассадке!', 'error');
         return;
       }
-      saveGameState();
       initRolesPhase();
       switchPhase('roles');
     });
-}
 
+} // ← закрывающая скобка ПОСЛЕ всех обработчиков
 
 
 // ════════════════════════════════════════════════════════════
@@ -281,7 +327,7 @@ function renderRolesList() {
       <span class="role-seat-name">${escapeHtml(name)}</span>
       <span class="role-tag-slot">
         ${cfg
-          ? `<span class="role-tag role-tag--${role}">${cfg.short}</span>`
+          ? `<span class="role-tag role-tag--${role} roles-phase-tag">${cfg.short}</span>`
           : '<span class="role-tag-empty"></span>'}
       </span>
     `;
@@ -290,6 +336,9 @@ function renderRolesList() {
 
   const activeEl = list.querySelector('.current');
   if (activeEl) activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+
+  // ✅ ДОБАВЬ
+  applyRolesVisibility();
 }
 
 function renderRolesCounter() {
@@ -331,11 +380,20 @@ function updateRoleButtons() {
 function assignRole(role) {
   const idx = GameState.currentSeatIdx;
   if (idx >= GameState.currentSeating.length) return;
+  
+  lastAssignedIdx = idx;          // ← запоминаем кто только что получил роль
+  
   GameState.roles[idx]     = role;
   GameState.currentSeatIdx = idx + 1;
   renderRolesList();
   renderRolesCounter();
   updateRoleButtons();
+
+  // Через 1 секунду скрываем только что назначенную роль
+  setTimeout(() => {
+    lastAssignedIdx = -1;
+    applyRolesVisibility();
+  }, 1000);
 }
 
 function cancelLastRole() {
@@ -344,6 +402,7 @@ function cancelLastRole() {
   const prevIdx = idx - 1;
   GameState.roles[prevIdx]  = null;
   GameState.currentSeatIdx  = prevIdx;
+  lastAssignedIdx = -1;           // ← сбрасываем при отмене
   renderRolesList();
   renderRolesCounter();
   updateRoleButtons();
@@ -380,10 +439,12 @@ let night0Interval = null;
 let night0Seconds  = 0;
 
 function startNight0() {
-  
   const src  = document.getElementById('rolesList');
   const dest = document.getElementById('night0List');
   dest.innerHTML = src.innerHTML;
+
+  // ✅ Применяем видимость сразу после копирования
+  applyRolesVisibility();
 
   night0Seconds = 0;
   document.getElementById('night0Timer').textContent = formatTime(0);
@@ -451,51 +512,66 @@ const dayState = {
 // ── Вычисление стартового игрока для раунда ─────────────────
 function getStartIdxForRound(round) {
   const players = dayState.players;
-  const total   = players.length;
 
-  // День 0 → первый живой от начала
-  if (round === 0) return players.findIndex(p => p.alive);
+  // ── День 0: всегда первый живой (место 1 или ближайшее) ──
+  if (round === 0) {
+    const idx = players.findIndex(p => p.alive);
+    return idx;
+  }
 
-  // День N → N-й живой игрок (0-based)
-  let count = 0;
-  for (let i = 0; i < total * 2; i++) {
-    const p = players[i % total];
-    if (p.alive) {
-      if (count === round) return i % total;
-      count++;
+  // ── День 1+: ищем следующего живого ПОСЛЕ стартового прошлого дня ──
+  const prevStartSeat = GameState.dayStartSeats[round - 1];
+
+  if (prevStartSeat == null) {
+    // Нет данных о прошлом дне — fallback к первому живому
+    return players.findIndex(p => p.alive);
+  }
+
+  // Находим индекс прошлого стартового игрока
+  const prevIdx = players.findIndex(p => p.seat === prevStartSeat);
+  if (prevIdx === -1) {
+    return players.findIndex(p => p.alive);
+  }
+
+  const total = players.length;
+
+  // Ищем следующего живого ПОСЛЕ prevIdx
+  for (let i = 1; i <= total; i++) {
+    const candidate = players[(prevIdx + i) % total];
+    if (candidate.alive) {
+      return players.indexOf(candidate);
     }
   }
+
   return players.findIndex(p => p.alive);
 }
 
 // ── Запуск дня ──────────────────────────────────────────────
 function startDay() {
-    console.log('▶ startDay, round =', dayState.round); // добавь эту строку
+  console.log('▶ startDay, round =', dayState.round);
 
-  // Инициализируем игроков если ещё не заполнены
   if (dayState.players.length === 0) {
     dayState.players = GameState.currentSeating.map((name, i) => ({
-  seat:               i + 1,
-  name,
-  role:               ROLES_CONFIG[GameState.roles[i]]?.short || '',
-  alive:              true,
-  fouls:              0,
-  extra:              0,
-  skipNext:           false,
-  nominee:            null,
-  nomineeOrder:       null,   // ← ДОБАВЬ: порядок выдвижения
-  nightDead:          false,
-  eliminationReason:  null,
-}));
+      seat:              i + 1,
+      name,
+      role:              ROLES_CONFIG[GameState.roles[i]]?.short || '',
+      alive:             true,
+      fouls:             0,
+      extra:             0,
+      skipNext:          false,
+      nominee:           null,
+      nomineeOrder:      null,
+      nightDead:         false,
+      eliminationReason: null,
+    }));
   }
 
-  // Сбрасываем номинации каждый день
-  dayState.players.forEach(p => { 
-  p.nominee      = null; 
-  p.nomineeOrder = null;  // ← ДОБАВЬ
-});
+  // Сбрасываем номинации
+  dayState.players.forEach(p => {
+    p.nominee      = null;
+    p.nomineeOrder = null;
+  });
 
-  // Сброс состояния дня
   dayState.eliminatedThisDay = false;
   dayState.currentIdx        = -1;
   dayState.timerSec          = getSpeechSeconds();
@@ -504,13 +580,12 @@ function startDay() {
   dayState.lastSpeech        = false;
   clearInterval(dayState.timerInterval);
 
-  // Вычисляем стартового игрока
   const startIdx = getStartIdxForRound(dayState.round);
-  if (startIdx === -1) {
-    console.error('Нет живых игроков');
-    return;
-  }
+  if (startIdx === -1) { console.error('Нет живых игроков'); return; }
   dayState.startSeatIdx = startIdx;
+
+  const startPlayer = dayState.players[startIdx];
+  if (startPlayer) GameState.dayStartSeats[dayState.round] = startPlayer.seat;
 
   rolesVisible = false;
   applyRolesVisibility();
@@ -518,12 +593,184 @@ function startDay() {
   renderDayList();
   renderNominationRow();
   renderDayTimer();
-  document.getElementById('dayTimerLabel').textContent = '— — —';
+  applyRolesVisibility();
+
   document.getElementById('btnSpeech').textContent     = '▶ Речь';
+  document.getElementById('dayPhaseTitle').textContent = `${dayState.round} ДЕНЬ`;
+  document.getElementById('dayGameTitle').textContent  =
+    GameState.evening?.title || 'Мафия-клуб';
 
   switchPhase('day');
-  document.getElementById('dayPhaseTitle').textContent = `${dayState.round} ДЕНЬ`;
-  document.getElementById('dayGameTitle').textContent = GameState.evening?.title || 'Мафия-клуб'; // ← ДОБАВЬ ЭТУ СТРОКУ
+
+  // ── Если есть убитые ночью — сначала их прощальные речи ──
+  const nightDead = dayState.players.filter(
+    p => !p.alive && p.eliminationReason === 'night'
+  );
+
+  // Собираем только тех, кто убит в ЭТУ ночь (ещё не говорил)
+  const deadThisNight = nightDead.filter(p => !p.hadLastWord);
+
+  if (deadThisNight.length > 0) {
+    startDayLastWords(deadThisNight);
+  }
+}
+
+// ── Прощальные речи убитых ночью (в начале дня) ─────────────
+
+const dayLastWordState = {
+  queue:   [],
+  idx:     0,
+  started: false,
+  active:  false,
+};
+
+function startDayLastWords(deadPlayers) {
+  dayLastWordState.queue   = [...deadPlayers].sort((a, b) => a.seat - b.seat);
+  dayLastWordState.idx     = 0;
+  dayLastWordState.started = false;
+  dayLastWordState.active  = true;
+
+  document.getElementById('nominationRow').style.display  = 'none';
+
+  document.getElementById('dayPhaseTitle').textContent =
+    `${dayState.round} НОЧЬ — ПОСЛЕДНЕЕ СЛОВО`;
+
+  dayState.currentIdx = -1;
+
+  // Рендерим нижнюю панель
+  renderDayLastWordBar();
+
+  renderDayLastWordSpeaker();
+}
+
+function renderDayLastWordBar() {
+  const bar = document.getElementById('dayLastWordBar');
+  const currentP = dayLastWordState.queue[dayLastWordState.idx];
+
+  bar.innerHTML = '';
+  bar.style.display = 'flex';   // ← flex, не block
+
+  dayLastWordState.queue.forEach(p => {
+    const isActive = (p.seat === currentP?.seat);
+
+    const card = document.createElement('div');
+    card.className = 'lw-card' + (isActive ? ' lw-active' : '');
+
+    const num = document.createElement('div');
+    num.className   = 'lw-num';
+    num.textContent = `#${p.seat}`;
+
+    const name = document.createElement('div');
+    name.className   = 'lw-name';
+    name.textContent = p.name;
+
+    card.appendChild(num);
+    card.appendChild(name);
+    bar.appendChild(card);
+  });
+}
+
+function renderDayLastWordSpeaker() {
+  const p = dayLastWordState.queue[dayLastWordState.idx];
+
+  if (!p) {
+    finishDayLastWords();
+    return;
+  }
+
+  dayLastWordState.started = false;
+
+  const realIdx = dayState.players.findIndex(pl => pl.seat === p.seat);
+  dayState.currentIdx = realIdx;
+
+  // Рендерим список — потом добавим класс говорящему
+  renderDayList();
+
+  // Добавляем класс last-word-speaker нужной строке
+  const rows = document.querySelectorAll('#dayList .day-row');
+  rows.forEach(row => {
+    const seatEl = row.querySelector('.day-seat');
+    if (seatEl && parseInt(seatEl.textContent) === p.seat) {
+      row.classList.add('last-word-speaker');
+    }
+  });
+
+  // Обновляем нижнюю панель
+  renderDayLastWordBar();
+
+  dayState.timerSec = getSpeechSeconds();
+  renderDayTimer();
+
+  const btn = document.getElementById('btnSpeech');
+  btn.style.display = 'block';
+  btn.textContent   = '▶ Речь';
+  btn.onclick       = () => onDayLastWordClick(p);
+}
+
+function onDayLastWordClick(p) {
+  const btn = document.getElementById('btnSpeech');
+
+  if (!dayLastWordState.started) {
+    // Запускаем таймер вручную — без startSpeechTimer
+    dayLastWordState.started = true;
+    btn.textContent = '⏭ Далее';
+    btn.onclick     = () => onDayLastWordClick(p);
+
+    // Запускаем таймер напрямую, минуя startSpeechTimer
+    clearInterval(dayState.timerInterval);
+    dayState.timerSec     = getSpeechSeconds();
+    dayState.timerRunning = true;
+    renderDayTimer();
+
+    dayState.timerInterval = setInterval(() => {
+      dayState.timerSec--;
+      renderDayTimer();
+      if (dayState.timerSec <= 0) {
+        clearInterval(dayState.timerInterval);
+        dayState.timerRunning = false;
+        renderDayTimer();
+      }
+    }, 1000);
+
+   } else {
+    // Переходим к следующему
+    clearInterval(dayState.timerInterval);
+    dayState.timerRunning = false;
+
+    p.hadLastWord = true;
+    dayLastWordState.idx++;
+    renderDayLastWordSpeaker();
+  }
+}
+
+function finishDayLastWords() {
+  dayLastWordState.active  = false;
+  dayLastWordState.queue   = [];
+  dayLastWordState.started = false;
+  dayState.currentIdx      = -1;
+
+  clearInterval(dayState.timerInterval);
+  dayState.timerRunning = false;
+
+  // Скрываем и полностью очищаем панель
+  const bar = document.getElementById('dayLastWordBar');
+  bar.innerHTML     = '';
+  bar.style.display = 'none';         // ← явно none
+  bar.classList.remove('day-lw-bar-visible');  // ← на случай если используется класс
+
+  document.getElementById('dayPhaseTitle').textContent =
+    `${dayState.round} ДЕНЬ`;
+  document.getElementById('nominationRow').style.display = '';
+
+  const btn = document.getElementById('btnSpeech');
+  btn.style.display = 'block';
+  btn.textContent   = '▶ Речь';
+  btn.onclick       = null;
+
+  dayState.timerSec = getSpeechSeconds();
+  renderDayTimer();
+  renderDayList();
+  renderNominationRow();
 }
 
 // ── Переход из ночи в день ──────────────────────────────────
@@ -582,6 +829,9 @@ function renderDayList() {
 
     ul.appendChild(li);
   });
+
+// 👇 ДОБАВЬ В КОНЕЦ
+  applyRolesVisibility();
 }
 
 function roleTagClass(role) {
@@ -605,7 +855,7 @@ function handleDayListClick(e) {
   const action = btn.dataset.action;
   const p      = dayState.players[idx];
 
-  if (!p) return;  // ← ДОБАВЬ защиту
+  if (!p) return;
 
   if (action === 'foul-inc') {
     if (p.fouls >= 3) {
@@ -617,34 +867,40 @@ function handleDayListClick(e) {
     }
     p.fouls++;
     if (p.fouls === 3) p.skipNext = true;
-    renderDayList();
-    renderFinishList();   // ← ДОБАВЬ
+    refreshAllLists();
     return;
   }
 
   if (action === 'foul-dec' && p.fouls > 0) {
     p.fouls--;
     if (p.fouls < 3) p.skipNext = false;
-    renderDayList();
-    renderFinishList();   // ← ДОБАВЬ
+    refreshAllLists();
     return;
   }
 
   if (action === 'extra-inc') {
     p.extra = Math.round((p.extra + getExtraStep()) * 1000) / 1000;
-    renderDayList();
-    renderFinishList();   // ← ДОБАВЬ
-    return;
-  }
-  if (action === 'extra-dec') {
-    p.extra = Math.round((p.extra - getExtraStep()) * 1000) / 1000;
-    renderDayList();
-    renderFinishList();   // ← ДОБАВЬ
+    refreshAllLists();
     return;
   }
 
-  if (action === 'eliminate') {
-    // ... остаётся без изменений
+  if (action === 'extra-dec') {
+    p.extra = Math.round((p.extra - getExtraStep()) * 1000) / 1000;
+    refreshAllLists();
+    return;
+  }
+}
+
+function refreshAllLists() {
+  if (document.getElementById('phase-day')?.classList.contains('active')) {
+    renderDayList();
+    renderNominationRow();
+  }
+  if (document.getElementById('phase-vote')?.classList.contains('active')) {
+    renderVoteList();
+  }
+  if (document.getElementById('phase-finish')?.classList.contains('active')) {
+    renderFinishList();
   }
 }
 
@@ -667,7 +923,6 @@ function eliminatePlayer(idx, reason) {
     clearInterval(dayState.timerInterval);
     dayState.timerRunning = false;
     dayState.currentIdx   = -1;
-    document.getElementById('dayTimerLabel').textContent = '— — —';
     document.getElementById('btnSpeech').textContent = '▶ Речь';
   }
 
@@ -713,8 +968,6 @@ function startSpeechTimer() {
     }
   }, 1000);
 
-  document.getElementById('dayTimerLabel').textContent =
-    `Говорит #${dayState.players[dayState.currentIdx]?.seat}`;
   document.getElementById('btnSpeech').textContent = '⏭ Далее';
 }
 
@@ -731,7 +984,6 @@ function nextSpeaker() {
     dayState.currentIdx   = -1;
     clearInterval(dayState.timerInterval);
     dayState.timerRunning = false;
-    document.getElementById('dayTimerLabel').textContent = '— — —';
     document.getElementById('btnSpeech').textContent     = '▶ Речь';
     renderDayList();
     renderNominationRow();
@@ -798,7 +1050,6 @@ function nextSpeaker() {
         dayState.currentIdx   = -1;
         clearInterval(dayState.timerInterval);
         dayState.timerRunning = false;
-        document.getElementById('dayTimerLabel').textContent = '— — —';
         document.getElementById('btnSpeech').textContent     = '▶ Речь';
         renderDayList();
         renderNominationRow();
@@ -811,7 +1062,6 @@ function nextSpeaker() {
     dayState.currentIdx   = -1;
     clearInterval(dayState.timerInterval);
     dayState.timerRunning = false;
-    document.getElementById('dayTimerLabel').textContent = '— — —';
     document.getElementById('btnSpeech').textContent     = '▶ Речь';
     renderDayList();
     renderNominationRow();
@@ -851,10 +1101,14 @@ function renderNominationRow() {
 
       const voter = dayState.players[dayState.currentIdx];
       voter.nominee = p.seat;
-            // Записываем: этот игрок выставил кого-то
-      recordDayAction(voter.seat, dayState.round, 'v');
 
-      // Записываем порядок выдвижения если ещё не выдвинут
+      if (!GameState.protocol.dayActions[voter.seat]) {
+        GameState.protocol.dayActions[voter.seat] = {};
+      }
+      GameState.protocol.dayActions[voter.seat][`d${dayState.round}_nom`] = String(p.seat);
+
+      recordDayAction(voter.seat, dayState.round, String(p.seat));
+
       if (p.nomineeOrder === null) {
         const orders = dayState.players
           .filter(pl => pl.nomineeOrder !== null)
@@ -867,9 +1121,11 @@ function renderNominationRow() {
       renderNominationRow();
     });
 
+    // ✅ Только номерная кнопка внутри forEach
     row.appendChild(btn);
-  });
+  }); // ← закрытие forEach
 
+  // ✅ Один крестик ПОСЛЕ всего цикла
   const cancel = document.createElement('button');
   cancel.className   = 'nom-cancel-btn';
   cancel.textContent = '✕';
@@ -879,7 +1135,6 @@ function renderNominationRow() {
 
     const voter = dayState.players[dayState.currentIdx];
 
-    // Сбрасываем nomineeOrder если никто другой не выдвинул
     if (voter.nominee !== null) {
       const oldNominee = dayState.players.find(pl => pl.seat === voter.nominee);
       if (oldNominee) {
@@ -895,18 +1150,46 @@ function renderNominationRow() {
     renderNominationRow();
   });
 
-  row.appendChild(cancel);
+  row.appendChild(cancel); // ← один раз в конце
 }
 
-// ── Видимость ролей ──────────────────────────────────────────
-let rolesVisible = false;
+// ═══════════════════════════════════════
+// ГЛОБАЛЬНОЕ УПРАВЛЕНИЕ ВИДИМОСТЬЮ РОЛЕЙ
+// ═══════════════════════════════════════
+
+let rolesVisible = false; // скрыты по умолчанию
+let lastAssignedIdx = -1;
 
 function applyRolesVisibility() {
-  const list = document.getElementById('dayList');
-  const btn  = document.getElementById('btnToggleRoles');
 
-  list.classList.toggle('roles-hidden', !rolesVisible);
-  btn.classList.toggle('active', rolesVisible);
+  // ── 1. Экран раздачи ролей ──
+  const rolesList = document.getElementById('rolesList');
+  if (rolesList) {
+    rolesList.querySelectorAll('.role-player-item').forEach(li => {
+      const seatNum = li.querySelector('.role-seat-num')?.textContent;
+      const isJustAssigned = seatNum && (parseInt(seatNum) - 1) === lastAssignedIdx;
+      li.classList.toggle('role-just-assigned', isJustAssigned);
+    });
+    rolesList.classList.toggle('roles-visible', rolesVisible);
+  }
+
+  // ── 2. Нулевая ночь (скопированные roles-phase-tag) ──
+  const night0List = document.getElementById('night0List');
+  if (night0List) {
+    night0List.querySelectorAll('.roles-phase-tag').forEach(el => {
+      el.style.visibility = rolesVisible ? 'visible' : 'hidden';
+    });
+  }
+
+  // ── 3. Все остальные экраны (day, night, vote, finish) ──
+  document.querySelectorAll('.day-role-tag, .night-role-slot .role-tag')
+    .forEach(el => {
+      el.style.visibility = rolesVisible ? 'visible' : 'hidden';
+    });
+
+  // ── 4. Кнопка ──
+  const btn = document.getElementById('btnToggleRolesGlobal');
+  if (!btn) return;
   btn.querySelector('.eye-icon').textContent  = rolesVisible ? '👁'  : '🙈';
   btn.querySelector('.eye-label').textContent = rolesVisible ? 'Роли видны' : 'Роли скрыты';
 }
@@ -923,21 +1206,31 @@ function openVotingModal() {
   const nominees = Object.entries(votesMap)
     .map(([seat, votes]) => ({ seat: +seat, votes }))
     .sort((a, b) => {
-      // Берём nomineeOrder из dayState.players
       const orderA = dayState.players.find(pl => pl.seat === a.seat)?.nomineeOrder ?? 999;
       const orderB = dayState.players.find(pl => pl.seat === b.seat)?.nomineeOrder ?? 999;
-      return orderA - orderB; // сортируем по порядку выдвижения
+      return orderA - orderB;
     });
 
+  if (nominees.length === 0) {
+    // ── Нет номинантов — идём сразу в ночь ──
+    confirmCallback = () => {
+      stopDay();
+      startNight(dayState.round + 1);
+    };
+
+    document.getElementById('confirmText').innerHTML = 'Нет номинантов.<br>Город засыпает 🌙';
+    document.getElementById('confirmYes').textContent = 'К следующей ночи →';
+    document.getElementById('confirmNo').style.display = 'none';
+    document.getElementById('confirmModal').classList.add('open');
+    return;
+  }
+
+  // ── Есть номинанты — стандартный путь ──
   let text = 'Голосование! <br> <br>';
-if (nominees.length === 0) {
-  text += 'Нет номинантов.';
-} else {
   text += nominees.map(n => {
     const p = dayState.players.find(pl => pl.seat === n.seat);
-    return `#${n.seat} ${p?.name || '<br>'}`;
+    return `#${n.seat} ${p?.name || ''}`;
   }).join('<br>');
-}
 
   confirmCallback = () => enterVotePhase();
 
@@ -972,19 +1265,14 @@ function stopDay() {
 // ── Привязка событий дня ─────────────────────────────────────
 function bindDayEvents() {
   document.getElementById('btnSpeech')
-    .addEventListener('click', nextSpeaker);
-
-   document.getElementById('btnToggleRoles')
     .addEventListener('click', () => {
-      rolesVisible = !rolesVisible;
-      applyRolesVisibility();
+      if (dayLastWordState.active) return;  // ← блокируем
+      nextSpeaker();
     });
-
   
 
   document.getElementById('dayList')
     .addEventListener('click', handleDayListClick);
- 
 }
 
 function bindGameMenuEvents() {
@@ -1069,10 +1357,17 @@ function recordNightAction(roundNum, stepKey, value) {
 // action: 'v' (выставил), 'x' (удалён голосованием),
 //         'у' (удалён ведущим/фолом), '-' (отказ от слова)
 function recordDayAction(seat, roundNum, action) {
+  console.log('recordDayAction вызван:', seat, roundNum, action);
   if (!GameState.protocol.dayActions[seat]) {
     GameState.protocol.dayActions[seat] = {};
   }
-  GameState.protocol.dayActions[seat][`d${roundNum}`] = action;
+  const key = `d${roundNum}`;
+  const existing = GameState.protocol.dayActions[seat][key];
+
+  // x и у важнее v — не перезаписываем обратно
+  if (existing === 'x' || existing === 'у') return;
+
+  GameState.protocol.dayActions[seat][key] = action;
 }
 
 // ── Запуск ночи ──────────────────────────────────────────────
@@ -1143,6 +1438,22 @@ function renderNightList() {
   const step    = NIGHT_STEPS[nightState.stepIdx];
   const isMafia = step.key === 'mafia';
 
+  // ── Определяем seat'ы текущего актора ──
+  const stepRoleMap = {
+    mafia:   ['МАФ', 'ДОН'],
+    don:     ['ДОН'],
+    sheriff: ['ШЕР'],
+    maniac:  ['МАН'],
+    doctor:  ['ДОК'],
+    beauty:  ['КРА'],
+  };
+  const actorRoles = stepRoleMap[step.key] || [];
+  const actorSeats = new Set(
+    dayState.players
+      .filter(p => p.alive && actorRoles.includes(p.role))
+      .map(p => p.seat)
+  );
+
   dayState.players.forEach(p => {
     const li = document.createElement('li');
     li.className = 'night-player-item';
@@ -1154,10 +1465,14 @@ function renderNightList() {
       li.classList.add('mafia-team');
     }
 
+    // ── Подсветка актора (золотой) — только если не дебриф ──
+    if (!nightState.isDebrief && actorSeats.has(p.seat)) {
+      li.classList.add('night-acting');
+    }
+
     const bg = nightState.bgMap[p.seat];
     if (bg === 'night-killed') li.classList.add('night-killed');
     if (bg === 'night-green')  li.classList.add('night-green');
-    if (nightState.redMap && nightState.redMap[p.seat]) li.classList.add('flash-red');
 
     if (!nightState.isDebrief && nightState.selectedSeat === p.seat) {
       li.classList.add('night-selected');
@@ -1168,16 +1483,15 @@ function renderNightList() {
     const roleClass = roleKey ? `role-tag--${roleKey}` : '';
 
     li.innerHTML = `
-  <span class="night-seat-num">${p.seat}</span>
-  <span class="night-seat-name">${p.name}</span>
-  <div class="night-role-slot">
-    ${p.role
-      ? `<span class="role-tag role-tag--neutral">${p.role}</span>`
-      : ''}
-  </div>
- `;
+      <span class="night-seat-num">${p.seat}</span>
+      <span class="night-seat-name">${p.name}</span>
+      <div class="night-role-slot">
+        ${p.role
+          ? `<span class="role-tag role-tag--neutral">${p.role}</span>`
+          : ''}
+      </div>
+    `;
 
-    // Flash — добавляем ПОСЛЕ innerHTML, чтобы не потерять listener
     const flashClass = nightState.flashMap[p.seat];
     if (flashClass) {
       li.classList.add(flashClass);
@@ -1190,6 +1504,7 @@ function renderNightList() {
   });
 
   nightState.flashMap = {};
+  applyRolesVisibility();
 }
 
 // ── Числовой ряд ─────────────────────────────────────────────
@@ -1461,16 +1776,18 @@ function startNightDebrief() {
   });
 
   Object.keys(nightState.bgMap).forEach(seat => {
-  if (nightState.bgMap[seat] !== 'night-killed' &&
-      nightState.bgMap[seat] !== 'night-green') {
-    delete nightState.bgMap[seat];
-  }
-});
+    if (nightState.bgMap[seat] !== 'night-killed' &&
+        nightState.bgMap[seat] !== 'night-green') {
+      delete nightState.bgMap[seat];
+    }
+  });
   nightState.flashMap = {};
 
   document.getElementById('nightNumRow').style.display     = 'none';
   document.getElementById('btnNightNext').style.display    = 'none';
   document.getElementById('btnNightDebrief').style.display = 'block';
+  document.getElementById('btnLastWord').style.display     = 'none'; // ← скрыть
+  document.getElementById('btnGoToDay').style.display      = 'none'; // ← скрыть
   document.getElementById('nightStepLabel').textContent    = 'Город просыпается';
 
   renderNightList();
@@ -1521,20 +1838,7 @@ function advanceNightStep() {
 
 // ── Последнее слово убитых ────────────────────────────────────
 function startLastWords() {
-  const deadThisNight = dayState.players
-    .filter(p => p.nightDead)
-    .sort((a, b) => a.seat - b.seat);
-
-  if (deadThisNight.length === 0) {
-    finishNightAndGoDay();
-    return;
-  }
-
-  nightState.lastWordsQueue = [...deadThisNight];
-  nightState.lastWordsIdx   = 0;
-  document.getElementById('nightStepLabel').textContent = 'Последнее слово';
-
-  renderLastWordSpeaker();
+  finishNightAndGoDay();
 }
 
 function renderLastWordSpeaker() {
@@ -1582,18 +1886,17 @@ function finishNightAndGoDay() {
       p.alive     = false;
       p.nightDead = false;
       p.eliminationReason = 'night';
-      console.log('☀ finishNightAndGoDay, nightState.round =', nightState.round);
     }
   });
 
   const nextRound = nightState.round;
 
-  document.getElementById('btnLastWord').style.display = 'none';
-  document.getElementById('btnGoToDay').style.display  = 'block';
-  document.getElementById('btnGoToDay').textContent    = `${nextRound} День ▶`;
-  document.getElementById('btnGoToDay').onclick = () => {
-    startDayFromNight(nextRound);
-  };
+  // Скрываем все ночные кнопки
+  document.getElementById('btnLastWord').style.display  = 'none';
+  document.getElementById('btnGoToDay').style.display   = 'none';
+
+  // Сразу идём в день — там обработаем прощальные речи
+  startDayFromNight(nextRound);
 }
 
 function bindNightEvents() {
@@ -1616,39 +1919,11 @@ function openConfirm(text, onYes) {
   document.getElementById('confirmModal').classList.add('open');
 }
 
-document.getElementById('confirmYes').addEventListener('click', () => {
-  document.getElementById('confirmModal').classList.remove('open');
-  document.getElementById('confirmYes').textContent  = 'Да';
-  document.getElementById('confirmNo').style.display = '';
-  if (confirmCallback) confirmCallback();
-  confirmCallback = null;
-});
-
-document.getElementById('confirmNo').addEventListener('click', () => {
-  document.getElementById('confirmModal').classList.remove('open');
-  document.getElementById('confirmYes').textContent  = 'Да';
-  document.getElementById('confirmNo').style.display = '';
-  confirmCallback = null;
-});
-
 function openKickModal() {
   document.getElementById('kickInput').value = '';
   document.getElementById('kickModal').classList.add('open');
 }
 
-document.getElementById('kickConfirmBtn').addEventListener('click', () => {
-  const num    = parseInt(document.getElementById('kickInput').value);
-  const player = dayState.players.find(p => p.seat === num);
-  if (!player) { alert('Игрок не найден'); return; }
-  document.getElementById('kickModal').classList.remove('open');
-  openConfirm(`Удалить #${player.seat} ${player.name}?`, () => {
-    eliminatePlayer(dayState.players.indexOf(player), 'manual');
-  });
-});
-
-document.getElementById('kickCancelBtn').addEventListener('click', () => {
-  document.getElementById('kickModal').classList.remove('open');
-});
 
 // ════════════════════════════════════════════════════════════
 //  УТИЛИТЫ
@@ -1699,7 +1974,7 @@ function showToast(message, type = 'success') {
 
 function updateGameMenu(phase) {
   const component = document.getElementById('gameMenuComponent');
-  component.style.display = MENU_PHASES.includes(phase) ? 'block' : 'none';
+  component.style.display = MENU_PHASES.includes(phase) ? 'flex' : 'none';
   document.getElementById('gameNumberDisplay').textContent =
     GameState.currentGameNum;
 }
@@ -1775,7 +2050,6 @@ function enterVotePhase() {
 // ═══════════════════════════════════════════════════
 
 function resetVoteUI() {
-  // Показываем нужные элементы
   document.getElementById('voteNumRow').style.display       = '';
   document.getElementById('btnVoteCancel').style.display    = '';
   document.getElementById('btnVoteNext').style.display      = 'block';
@@ -1785,14 +2059,15 @@ function resetVoteUI() {
   document.getElementById('btnVoteDone').style.display      = 'none';
   document.getElementById('voteTimerWrap').style.display    = 'none';
 
+  // voteBigNum больше не используем — убираем если есть
   const bigNum = document.getElementById('voteBigNum');
-  if (bigNum) {
-    bigNum.style.display  = '';
-    bigNum.style.fontSize = '';
-  }
+  if (bigNum) bigNum.style.display = 'none';
+
+  const bigName = document.getElementById('voteBigName');
+  if (bigName) bigName.style.display = 'none';
 
   renderVoteList();
-  renderVoteBigNum();
+  renderVoteBigNum();   // рендерит candidatesStrip
   renderVoteNumRow();
   updateVoteButtons();
 }
@@ -1831,9 +2106,9 @@ function renderVoteList() {
       <span class="day-seat-name">${p.name}</span>
 
       <div class="day-role-slot">
-        ${voteState.showRoles && roleClass
-          ? `<span class="role-tag ${roleClass} day-role-tag">${p.role}</span>`
-          : ''}
+        ${roleClass
+        ? `<span class="role-tag ${roleClass} day-role-tag">${p.role}</span>`
+  : ''}
       </div>
 
       <div class="foul-cell">
@@ -1863,29 +2138,44 @@ function renderVoteList() {
 
     ul.appendChild(li);
   });
+
+  // 👇 ДОБАВЬ В КОНЕЦ
+  applyRolesVisibility();
 }
 
 // ═══════════════════════════════════════════════════
 //  КРУПНЫЙ НОМЕР КАНДИДАТА
 // ═══════════════════════════════════════════════════
 
-function renderVoteBigNum() {
-  const bigNum  = document.getElementById('voteBigNum');
-  const bigName = document.getElementById('voteBigName');
-  if (!bigNum || !bigName) return;
+function renderVoteBigNum(overrideCandidates) {
+  const strip = document.getElementById('candidatesStrip');
+  if (!strip) return;
 
-  const candidates = voteState.round === 1
-    ? voteState.candidates
-    : voteState.runoffCandidates;
+  const candidates = overrideCandidates
+    ? overrideCandidates
+    : (voteState.round === 1
+        ? voteState.candidates
+        : voteState.runoffCandidates);
 
-  const current = candidates[voteState.currentIdx];
-  if (current) {
-    bigNum.textContent  = `#${current.seat}`;
-    bigName.textContent = current.name;
-  } else {
-    bigNum.textContent  = '—';
-    bigName.textContent = '';
-  }
+  strip.innerHTML = '';
+  if (!candidates || candidates.length === 0) return;
+
+  candidates.forEach((c, idx) => {
+    const div = document.createElement('div');
+    div.className = 'cand-card';
+
+    const isCurrent = idx === voteState.currentIdx;
+    const isDone    = idx < voteState.currentIdx;
+
+    if (isCurrent) div.classList.add('active');
+    if (isDone)    div.classList.add('done');
+
+    div.innerHTML = `
+      <span class="cand-num">#${c.seat}</span>
+      <span class="cand-name">${escapeHtml(c.name)}</span>
+    `;
+    strip.appendChild(div);
+  });
 }
 
 // ═══════════════════════════════════════════════════
@@ -2058,18 +2348,9 @@ function startRunoffSpeeches(runoffPlayers) {
 }
 
 function showRunoffSpeechCandidate(idx) {
-  const candidate = voteState.runoffCandidates[idx];
-  if (!candidate) return;
-
-  const bigNum  = document.getElementById('voteBigNum');
-  const bigName = document.getElementById('voteBigName');
-
-  if (bigNum) {
-    bigNum.style.display  = '';
-    bigNum.style.fontSize = '';
-    bigNum.textContent    = `#${candidate.seat}`;
-  }
-  if (bigName) bigName.textContent = candidate.name;
+  voteState.currentIdx = idx;
+  // Передаём runoffCandidates явно — round ещё может быть 1
+  renderVoteBigNum(voteState.runoffCandidates);
 }
 
 function setupRunoffSpeechBtn() {
@@ -2088,7 +2369,7 @@ function setupRunoffSpeechBtn() {
       // Запускаем таймер речи
       btn.dataset.state = 'running';
       document.getElementById('voteTimerWrap').style.display = 'block';
-      startVoteTimer(getSpeechSeconds(), () => {;
+      startVoteTimer(30, () => {
         // По окончании таймера меняем текст кнопки
         if (isLast) {
           btn.textContent = '🗳 Голосование';
@@ -2193,7 +2474,6 @@ function startLastWord(players) {
   voteState.lastWordIdx     = 0;
   voteState.lastWordStarted = false;
 
-  // Прячем лишнее
   document.getElementById('btnVoteNext').style.display      = 'none';
   document.getElementById('btnRunoffVote').style.display    = 'none';
   document.getElementById('btnRunoffSpeech').style.display  = 'none';
@@ -2201,16 +2481,9 @@ function startLastWord(players) {
   document.getElementById('btnVoteCancel').style.display    = 'none';
   document.getElementById('voteTimerWrap').style.display    = 'none';
 
-  // Показываем первого игрока
-  const p = players[0];
-  const bigNum  = document.getElementById('voteBigNum');
-  const bigName = document.getElementById('voteBigName');
-  if (bigNum) {
-    bigNum.style.display  = '';
-    bigNum.style.fontSize = '';
-    bigNum.textContent    = `#${p.seat}`;
-  }
-  if (bigName) bigName.textContent = p.name;
+  // Показываем первого в strip — передаём lastWordPlayers явно
+  voteState.currentIdx = 0;
+  renderVoteBigNum(voteState.lastWordPlayers);
 
   const btnLW = document.getElementById('btnVoteLastWord');
   btnLW.style.display = 'block';
@@ -2222,29 +2495,20 @@ function showNextLastWord() {
   const p = voteState.lastWordPlayers[voteState.lastWordIdx];
 
   if (!p) {
-    // Все речи закончены
     clearInterval(voteState.timerInterval);
     document.getElementById('voteTimerWrap').style.display   = 'none';
     document.getElementById('btnVoteLastWord').style.display = 'none';
 
-    // Выбываем
     eliminatePlayers(voteState.lastWordPlayers);
     renderVoteList();
-
-    // Модалка "Город засыпает"
     showNightComingModal();
     return;
   }
 
-  const bigNum  = document.getElementById('voteBigNum');
-  const bigName = document.getElementById('voteBigName');
-  if (bigNum) {
-    bigNum.style.display = '';
-    bigNum.textContent   = `#${p.seat}`;
-  }
-  if (bigName) bigName.textContent = p.name;
+  // Подсвечиваем текущего — передаём lastWordPlayers явно
+  voteState.currentIdx = voteState.lastWordIdx;
+  renderVoteBigNum(voteState.lastWordPlayers);
 
-  // Запускаем таймер
   document.getElementById('voteTimerWrap').style.display = 'block';
   startVoteTimer(getSpeechSeconds(), () => {});
 
@@ -2270,6 +2534,7 @@ function eliminatePlayers(players) {
     if (target) {
       target.alive = false;
       target.eliminationReason = 'vote';
+      recordDayAction(target.seat, dayState.round, 'x'); // ← ДОБАВЬ ЭТУ СТРОКУ
     }
   });
 }
@@ -2362,21 +2627,7 @@ function initVotePhase() {
     startNight(dayState.round + 1);
   });
 
-  // Переключатель ролей
-  document.getElementById('btnVoteToggleRoles')?.addEventListener('click', () => {
-    voteState.showRoles = !voteState.showRoles;
-    const label = document.querySelector('#phase-vote .eye-label');
-    const icon  = document.querySelector('#phase-vote .eye-icon');
-    if (voteState.showRoles) {
-      if (label) label.textContent = 'Роли видны';
-      if (icon)  icon.textContent  = '👁';
-    } else {
-      if (label) label.textContent = 'Роли скрыты';
-      if (icon)  icon.textContent  = '🙈';
-    }
-    renderVoteList();
-  });
-
+  
 } // ← конец initVotePhase
 
 // ════════════════════════════════════════════════════════════
@@ -2425,7 +2676,7 @@ function renderFinishList() {
     const roleClass = roleTagClass(p.role);
 
     const li = document.createElement('li');
-    li.className = 'day-player-item' + (!p.alive ? ' eliminated' : '');
+    li.className = 'day-player-item finish-item' + (!p.alive ? ' finish-dead' : '');
     li.innerHTML = `
       <span class="day-seat-num">${p.seat}</span>
       <span class="day-seat-name">${p.name}</span>
@@ -2475,6 +2726,13 @@ function getTeamByRole(roleShort) {
   if (roleShort === 'МАН') return 'maniac';
   return 'civil';
 }
+
+
+console.log('Игроки:', dayState.players.map(p => ({
+  seat: p.seat,
+  alive: p.alive,
+  reason: p.eliminationReason
+})));
 
 function saveGameResult() {
   const winner    = finishState.winner;

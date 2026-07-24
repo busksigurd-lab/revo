@@ -31,7 +31,6 @@
     </div>
     <ul class="nav-list">
       <li><a href="index.html" class="nav-link active">👥 Игроки</a></li>
-      <li><a href="game.html"  class="nav-link">🎮 Игры</a></li>
       <li><a href="results.html" class="nav-link">🏆 Результаты</a></li>
       <li><a href="settings.html" class="nav-link">⚙️ Настройки</a></li>
     </ul>
@@ -62,24 +61,38 @@
 </div>
 
     <!-- Блок 2: Список игроков -->
-    <div class="card">
-      <div class="players-header">
-        <span class="card-title" style="margin-bottom:0">👥 Игроки</span>
-        <span class="player-count" id="playerCount">0 игроков</span>
-      </div>
+<div class="card">
 
-      <div class="player-toolbar">
-        <button class="btn btn-secondary btn-sm" id="btnPasteClipboard">
-          📋 Вставить из буфера
-        </button>
-        <button class="btn btn-secondary btn-sm" id="btnClearAll">
-          🗑 Очистить
-        </button>
-      </div>
-
-      <div class="player-list" id="playerList"></div>
-      
+  <!-- Заголовок с счётчиком активных -->
+  <div class="players-header">
+    <span class="card-title" style="margin-bottom:0">👥 Игроки</span>
+    <div class="active-counter">
+      <button class="btn-counter" id="btnActiveMinus">−</button>
+      <span class="counter-value" id="activeCount">10</span>
+      <button class="btn-counter" id="btnActivePlus">+</button>
     </div>
+  </div>
+
+  <!-- Тулбар -->
+  <div class="player-toolbar">
+    <button class="btn btn-secondary btn-sm" id="btnPasteClipboard">
+      📋 Вставить из буфера
+    </button>
+    <button class="btn btn-secondary btn-sm" id="btnClearAll">
+      🗑 Очистить
+    </button>
+  </div>
+
+  <!-- Список (рендерится JS) -->
+  <div class="player-list" id="playerList"></div>
+
+  <!-- Добавить игрока -->
+  <button class="btn btn-secondary btn-sm" id="btnAddPlayer"
+          style="margin-top: 10px; width: 100%">
+    + Добавить игрока
+  </button>
+
+</div>
 
     <!-- Блок 3: Рассадки -->
     <div class="card">
@@ -97,13 +110,27 @@
       </div>
 
       <div class="tabs-wrapper" id="tabsWrapper" hidden>
-        <div class="tabs-nav" id="tabsNav"></div>
-        <div class="tabs-body" id="tabsBody"></div>
-        <button class="btn btn-secondary btn-sm" id="btnSaveFile" style="margin-top:12px">
-          💾 Сохранить в файл
-        </button>
-      </div>
-    </div>
+  <div class="tabs-nav" id="tabsNav"></div>
+  <div class="tabs-body" id="tabsBody"></div>
+
+  <div class="seating-btn-group">
+    <button class="btn btn-secondary btn-sm" id="btnSaveFile">
+      💾 Сохранить в файл
+    </button>
+    <button class="btn btn-secondary btn-sm" id="btnImportFile">
+      📂 Импортировать из файла
+    </button>
+    <button class="btn btn-secondary btn-sm" id="btnExportImages">
+      📸 Скачать картинки
+    </button>
+    <button class="btn btn-secondary btn-sm" id="btnSendToTelegram">
+      ✈️ Отправить в Telegram
+    </button>
+  </div>
+
+  <!-- Скрытый input для выбора файла -->
+  <input type="file" id="importFileInput" accept=".txt" style="display:none" />
+</div>
 
     <!-- Блок 4: Старт -->
     <div class="card">
@@ -119,23 +146,20 @@
   </main>
 
   <!-- Нижняя навигация -->
-  <nav class="bottom-nav">
-    <a href="index.html" class="bottom-nav-btn active">
-      <span class="nav-icon">👥</span>
-      <span>Игроки</span>
-    </a>
-    <a href="game.html" class="bottom-nav-btn">
-      <span class="nav-icon">🎮</span>
-      <span>Игры</span>
-    </a>
-    <a href="results.html" class="bottom-nav-btn">
-    <span class="nav-icon">🏆</span><span>Результаты</span>
-    </a>
-    <a href="settings.html" class="bottom-nav-btn">
+<nav class="bottom-nav">
+  <a href="index.html" class="bottom-nav-btn active">
+    <span class="nav-icon">👥</span>
+    <span>Игроки</span>
+  </a>
+  <a href="results.html" class="bottom-nav-btn">
+    <span class="nav-icon">🏆</span>
+    <span>Результаты</span>
+  </a>
+  <a href="settings.html" class="bottom-nav-btn">
     <span class="nav-icon">⚙️</span>
     <span>Настройки</span>
-    </a>
-  </nav>
+  </a>
+</nav>
 
   <script src="js/pages/players.js"></script>
 
@@ -144,6 +168,9 @@
       navigator.serviceWorker.register('./service-worker.js')
     }
   </script>
+
+  <!-- Перед закрывающим </body> -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 </body>
 </html>

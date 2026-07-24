@@ -24,12 +24,10 @@
       <button class="sidebar-close" id="sidebarClose">✕</button>
     </div>
     <ul class="nav-list">
-      <li><a href="index.html"   class="nav-link">👥 Игроки</a></li>
-      <li><a href="game.html"    class="nav-link">🎮 Игра</a></li>
-      <li><a href="results.html" class="nav-link active">🏆 Результаты</a></li>
-      <li><a href="stats.html"   class="nav-link">📊 Статистика</a></li>
-      <li><a href="settings.html"class="nav-link">⚙️ Настройки</a></li>
-    </ul>
+  <li><a href="index.html"   class="nav-link">👥 Игроки</a></li>
+  <li><a href="results.html" class="nav-link active">🏆 Результаты</a></li>
+  <li><a href="settings.html" class="nav-link">⚙️ Настройки</a></li>
+</ul>
     <div class="sidebar-footer">
       <span class="text-muted" style="font-size:12px;">v1.0.0</span>
     </div>
@@ -59,34 +57,28 @@
     </div>
 
     <!-- ── Экшн-кнопки ── -->
-    <div class="card results-actions-card">
-      <button class="btn btn-secondary btn-large" id="btnExportResults">
-        📤 Экспорт в файл
-      </button>
-      <button class="btn btn-primary btn-large" id="btnSaveToHistory">
-        💾 Сохранить в историю
-      </button>
-    </div>
+    <div id="resultsActionBar" class="results-action-bar"></div>
 
   </main>
 
   <!-- Нижняя навигация -->
-  <nav class="bottom-nav">
-    <a href="index.html"    class="bottom-nav-btn">
-      <span class="nav-icon">👥</span><span>Игроки</span>
+ <nav class="bottom-nav">
+    <a href="index.html" class="bottom-nav-btn">
+      <span class="nav-icon">👥</span>
+      <span>Игроки</span>
     </a>
-    <a href="game.html"     class="bottom-nav-btn">
-      <span class="nav-icon">🎮</span><span>Игра</span>
+    <a href="results.html" class="bottom-nav-btn active">
+      <span class="nav-icon">🏆</span>
+      <span>Результаты</span>
     </a>
-    <a href="results.html"  class="bottom-nav-btn active">
-      <span class="nav-icon">🏆</span><span>Итоги</span>
-    </a>
-    <a href="stats.html"    class="bottom-nav-btn">
-      <span class="nav-icon">📊</span><span>Статистика</span>
+    <a href="settings.html" class="bottom-nav-btn">
+      <span class="nav-icon">⚙️</span>
+      <span>Настройки</span>
     </a>
   </nav>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="js/pages/results.js"></script>
-  
+
 </body>
 </html>

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1080" />
+  <title>Итоги вечера</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      width: 1080px;
+      height: 1920px;
+      overflow: hidden;
+      font-family: 'Montserrat', 'Segoe UI', Arial, sans-serif;
+    }
+
+    #card {
+      position: relative;
+      width: 1080px;
+      height: 1920px;
+      overflow: hidden;
+    }
+
+    #card-bg {
+      position: absolute;
+      inset: 0;
+      width: 1080px;
+      height: 1920px;
+      object-fit: cover;
+      object-position: center;
+      z-index: 0;
+    }
+
+    #card-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      z-index: 1;
+    }
+
+    #card-content {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ══ ШАПКА ══ */
+    .header-zone {
+      flex-shrink: 0;
+      padding: 70px 80px 0;
+    }
+
+    .evening-date {
+      font-size: 24px;
+      font-weight: 400;
+      color: rgba(255,255,255,0.45);
+      letter-spacing: 0.08em;
+      line-height: 1;
+      margin-bottom: 5px;
+    }
+
+    .evening-title {
+      font-size: 77px;
+      font-weight: 900;
+      color: #ffffff;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      line-height: 1;
+      text-shadow: 0 2px 20px rgba(0,0,0,0.8);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .results-label {
+      font-size: 24px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.45);
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      line-height: 1;
+      margin-top: 5px;
+    }
+
+    .divider {
+      width: calc(100% - 160px);
+      margin: 22px 80px 0;
+      height: 2px;
+      background: linear-gradient(90deg, #e8b84b 0%, rgba(232,184,75,0.15) 100%);
+      flex-shrink: 0;
+    }
+
+    /* ══ ЦЕНТРАЛЬНАЯ ЗОНА ══ */
+    .center-zone {
+      flex: 1;
+      padding: 0 80px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-height: 0;
+    }
+
+    /* ── Общая сетка колонок (одна для всех) ── */
+    .tbl-head,
+    .result-row {
+      display: grid;
+      grid-template-columns: 64px 1fr 110px 130px 140px;
+      align-items: center;
+      padding-left: 20px;
+      padding-right: 20px;
+    }
+
+    /* ── Заголовок таблицы ── */
+    .tbl-head {
+      padding-bottom: 14px;
+      border-bottom: 1px solid rgba(232,184,75,0.35);
+      margin-bottom: 10px;
+    }
+
+    tbl-head-cell {
+  font-size: 12px;        /* было 22px — делаем в два раза меньше данных */
+  font-weight: 400;       /* без болда */
+  color: rgba(255,255,255,0.35);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+    .tbl-head-cell.col-name { text-align: left; }
+    .tbl-head-cell.col-wins,
+    .tbl-head-cell.col-extra,
+    .tbl-head-cell.col-pts  { text-align: right; }
+
+    /* ── Строки ── */
+    #tplResultsList {
+      display: flex;
+      flex-direction: column;
+      gap: 0 px;
+    }
+
+    .result-row {
+      padding-top: 14px;
+      padding-bottom: 14px;
+      border-radius: 10px;
+      background: transparent;
+    }
+
+    .result-row.rank-1 { background: rgba(255, 215, 0,   0.10); }
+    .result-row.rank-2 { background: rgba(192, 192, 192, 0.07); }
+    .result-row.rank-3 { background: rgba(205, 127, 50,  0.08); }
+
+    .col-rank {
+      font-size: 30px;
+      line-height: 1;
+      text-align: center;
+    }
+
+    .col-name {
+      font-size: 32px;
+      font-weight: 700;
+      color: #f0f0f0;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      text-shadow: 0 1px 8px rgba(0,0,0,0.6);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding-left: 8px;
+    }
+
+    .col-wins {
+      font-size: 30px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.55);
+      text-align: right;
+    }
+
+    .col-extra {
+      font-size: 30px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.45);
+      text-align: right;
+    }
+
+    .col-extra.extra-pos { color: #4ade80; }
+    .col-extra.extra-neg { color: #f87171; }
+
+    .col-pts {
+      font-size: 36px;
+      font-weight: 900;
+      color: #e8b84b;
+      text-align: right;
+      letter-spacing: -0.02em;
+    }
+
+    .result-row.rank-1 .col-pts { color: #ffd700; }
+
+    /* ══ ПОДВАЛ ══ */
+    .footer-zone {
+      flex-shrink: 0;
+      height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 0 80px 40px;
+    }
+
+    .logo {
+      width: 140px;
+      height: 140px;
+      object-fit: contain;
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+<div id="card">
+
+  <img id="card-bg" src="images/seating-bg.jpg" alt="" />
+  <div id="card-overlay"></div>
+
+  <div id="card-content">
+
+    <div class="header-zone">
+      <div class="evening-date"  id="tplEveningDate">1 января 2025</div>
+      <div class="evening-title" id="tplEveningTitle">ШЕФСКИЙ</div>
+      <div class="results-label">Итоги вечера</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="center-zone">
+
+      <div class="tbl-head">
+        <div class="tbl-head-cell"></div>
+        <div class="tbl-head-cell col-name"></div>
+        <div class="tbl-head-cell col-wins">Победы</div>
+        <div class="tbl-head-cell col-extra">Доп</div>
+        <div class="tbl-head-cell col-pts">Очки</div>
+      </div>
+
+      <div id="tplResultsList">
+        <!-- строки инжектируются JS -->
+      </div>
+
+    </div>
+
+    <div class="footer-zone">
+      <img class="logo" src="images/logo.png" alt="Революция" />
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
